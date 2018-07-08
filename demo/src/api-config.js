@@ -10,7 +10,7 @@ let apiRoot;
 const origin = window && window.location && window.location.origin;
 
 if (origin.includes(':3000')) {
-    apiRoot = origin.replace(":3000", ":8000");
+    apiRoot = origin.replace(":3000", ":8080");
 } else {
     apiRoot = origin;
 }
