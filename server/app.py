@@ -21,15 +21,15 @@ import psycopg2
 import pytz
 
 from allennlp.common.util import JsonDict, peak_memory_mb
-from allennlp.service.db import DemoDatabase, PostgresDemoDatabase
-from allennlp.service.permalinks import int_to_slug, slug_to_int
-from allennlp.service.predictors import Predictor, DemoModel
+#from allennlp.service.db import DemoDatabase, PostgresDemoDatabase
+#from allennlp.service.permalinks import int_to_slug, slug_to_int
 
 from server.models import MODELS
+from allennlp.predictors.predictor import Predictor
 
 # Can override cache size with an environment variable. If it's 0 then disable caching altogether.
 CACHE_SIZE = os.environ.get("FLASK_CACHE_SIZE") or 128
-PORT = os.environ.get("ALLENNLP_DEMO_PORT") or 8000
+PORT = int(os.environ.get("ALLENNLP_DEMO_PORT") or 8000)
 DEMO_DIR = os.environ.get("ALLENNLP_DEMO_DIRECTORY") or 'demo/'
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -59,9 +59,10 @@ def main():
 
     # This will be ``None`` if all the relevant environment variables are not defined or if
     # there is an exception when connecting to the database.
-    demo_db = PostgresDemoDatabase.from_environment()
-    if demo_db is None:
-        logger.warning("demo db credentials not provided, so not using demo db")
+#    demo_db = PostgresDemoDatabase.from_environment()
+#    if demo_db is None:
+#        logger.warning("demo db credentials not provided, so not using demo db")
+    demo_db = None
 
     app = make_app(demo_db=demo_db)
     CORS(app)
@@ -75,7 +76,7 @@ def main():
     logger.info("Server started on port %i.  Please visit: http://localhost:%i", PORT, PORT)
     http_server.serve_forever()
 
-def make_app(build_dir: str = None, demo_db: Optional[DemoDatabase] = None) -> Flask:
+def make_app(build_dir: str = None, demo_db = None) -> Flask:
     if build_dir is None:
         build_dir = os.path.join(DEMO_DIR, 'build')
 
@@ -128,8 +129,9 @@ def make_app(build_dir: str = None, demo_db: Optional[DemoDatabase] = None) -> F
             raise ServerError('Permalinks are not enabled', 400)
 
         # Convert the provided slug to an integer id.
-        slug = request.get_json()["slug"]
-        perma_id = slug_to_int(slug)
+#        slug = request.get_json()["slug"]
+#        perma_id = slug_to_int(slug)
+        perma_id = None
         if perma_id is None:
             # Malformed slug
             raise ServerError("Unrecognized permalink: {}".format(slug), 400)
@@ -161,8 +163,8 @@ def make_app(build_dir: str = None, demo_db: Optional[DemoDatabase] = None) -> F
         record_to_database = request.args.get("record", "true").lower() != "false"
 
         # Do use the cache if no argument is specified
-        use_cache = request.args.get("cache", "true").lower() != "false"
-
+#        use_cache = request.args.get("cache", "true").lower() != "false"
+        use_cache = False
         model = app.predictors.get(model_name.lower())
         if model is None:
             raise ServerError("unknown model: {}".format(model_name), status_code=400)
@@ -185,21 +187,21 @@ def make_app(build_dir: str = None, demo_db: Optional[DemoDatabase] = None) -> F
 
         post_hits = _caching_prediction.cache_info().hits  # pylint: disable=no-value-for-parameter
 
-        if record_to_database and demo_db is not None:
-            try:
-                perma_id = None
-                perma_id = demo_db.add_result(headers=dict(request.headers),
-                                              model_name=model_name,
-                                              inputs=data,
-                                              outputs=prediction)
-                if perma_id is not None:
-                    slug = int_to_slug(perma_id)
-                    prediction["slug"] = slug
-                    log_blob["slug"] = slug
+#        if record_to_database and demo_db is not None:
+#            try:
+#                perma_id = None
+#                perma_id = demo_db.add_result(headers=dict(request.headers),
+#                                              model_name=model_name,
+#                                              inputs=data,
+#                                              outputs=prediction)
+#                if perma_id is not None:
+#                    slug = int_to_slug(perma_id)
+#                    prediction["slug"] = slug
+#                    log_blob["slug"] = slug
 
-            except Exception:  # pylint: disable=broad-except
-                # TODO(joelgrus): catch more specific errors
-                logger.exception("Unable to add result to database", exc_info=True)
+#            except Exception:  # pylint: disable=broad-except
+#                # TODO(joelgrus): catch more specific errors
+#                logger.exception("Unable to add result to database", exc_info=True)
 
         if use_cache and post_hits > pre_hits:
             # Cache hit, so insert an artifical pause
