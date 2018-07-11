@@ -33,6 +33,7 @@ DEMO_DIR = os.environ.get("ALLENNLP_DEMO_DIRECTORY") or 'demo/'
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 logger.setLevel(logging.INFO)
+logger.addHandler( logging.StreamHandler() )
 
 class ServerError(Exception):
     status_code = 400
