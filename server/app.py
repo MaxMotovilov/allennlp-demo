@@ -11,6 +11,7 @@ import os
 import sys
 import time
 from functools import lru_cache
+from itertools import groupby
 
 from flask import Flask, request, Response, jsonify, send_file, send_from_directory
 from flask_cors import CORS
@@ -27,7 +28,7 @@ from allennlp.predictors.predictor import Predictor
 
 # Can override cache size with an environment variable. If it's 0 then disable caching altogether.
 CACHE_SIZE = os.environ.get("FLASK_CACHE_SIZE") or 128
-PORT = int(os.environ.get("ALLENNLP_DEMO_PORT") or 8000)
+PORT = int(os.environ.get("ALLENNLP_DEMO_PORT") or 8080)
 DEMO_DIR = os.environ.get("ALLENNLP_DEMO_DIRECTORY") or 'demo/'
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -52,17 +53,7 @@ def main():
     """Run the server programatically"""
     logger.info("Starting a flask server on port %i.", PORT)
 
-    if PORT != 8000:
-        logger.warning("The demo requires the API to be run on port 8000.")
-
-    # This will be ``None`` if all the relevant environment variables are not defined or if
-    # there is an exception when connecting to the database.
-#    demo_db = PostgresDemoDatabase.from_environment()
-#    if demo_db is None:
-#        logger.warning("demo db credentials not provided, so not using demo db")
-    demo_db = None
-
-    app = make_app(demo_db=demo_db)
+    app = make_app()
     CORS(app)
 
     for name, demo_model in MODELS.items():
@@ -74,7 +65,30 @@ def main():
     logger.info("Server started on port %i.  Please visit: http://localhost:%i", PORT, PORT)
     http_server.serve_forever()
 
-def make_app(build_dir: str = None, demo_db = None) -> Flask:
+class Next(object):
+    def __init__(self, v):
+        self.value = v
+
+    def __call__(self, bump):
+        if bump:
+            self.value += 1
+        return self.value
+
+def top_spans( starts, ends, n ):
+    assert len(starts) == len(ends)
+    return sorted(
+              (
+                max(
+                  (
+                     (starts[p][i] + ends[p][j], p, i, j)
+                       for i in range(len(starts[p]))
+                         for j in range(i, len(ends[p]))
+                  )
+                ) for p in range(len(starts))
+              ), reverse=True
+            )[:n]
+
+def make_app(build_dir: str = None) -> Flask:
     if build_dir is None:
         build_dir = os.path.join(DEMO_DIR, 'build')
 
@@ -117,125 +131,55 @@ def make_app(build_dir: str = None, demo_db = None) -> Flask:
         if request.method == "OPTIONS":
             return Response(response="", status=200)
 
-        # Do log if no argument is specified
-        record_to_database = request.args.get("record", "true").lower() != "false"
+        req_data = request.get_json()
 
-        # Do use the cache if no argument is specified
-#        use_cache = request.args.get("cache", "true").lower() != "false"
-        use_cache = False
-        model = app.predictors.get(model_name.lower())
-        if model is None:
-            raise ServerError("unknown model: {}".format(model_name), status_code=400)
+        bidaf_data = {
+            'question': req_data['question']
+        }
 
-        data = request.get_json()
-
-        log_blob = {"model": model_name, "inputs": data, "cached": False, "outputs": {}}
-
-        # Record the number of cache hits before we hit the cache so we can tell whether we hit or not.
-        # In theory this could result in false positives.
-        pre_hits = _caching_prediction.cache_info().hits  # pylint: disable=no-value-for-parameter
-
-        if use_cache and cache_size > 0:
-            # lru_cache insists that all function arguments be hashable,
-            # so unfortunately we have to stringify the data.
-            prediction = _caching_prediction(model, json.dumps(data))
+        if model_name == "doc":
+            bidaf_data['passage'] = " ".join( (p['cpar'] for p in req_data['doc']) )
         else:
-            # if cache_size is 0, skip caching altogether
-            prediction = model.predict_json(data)
+            if model_name != "section" and model_name != "doc-slice":
+                raise ServerError("unknown predictor: {}".format(model_name), status_code=404)
 
-        post_hits = _caching_prediction.cache_info().hits  # pylint: disable=no-value-for-parameter
+            mp_data = {
+                'question': req_data['question']
+            }
 
-#        if record_to_database and demo_db is not None:
-#            try:
-#                perma_id = None
-#                perma_id = demo_db.add_result(headers=dict(request.headers),
-#                                              model_name=model_name,
-#                                              inputs=data,
-#                                              outputs=prediction)
-#                if perma_id is not None:
-#                    slug = int_to_slug(perma_id)
-#                    prediction["slug"] = slug
-#                    log_blob["slug"] = slug
+            if model_name == "doc-slice":
+                mp_data['passages'] = [p['cpar'] for p in req_data['doc']]
+            else:
+                next = Next(0)
+                mp_data['passages'] = [" ".join( (p['cpar'] for p in g) ) for g in groupby( req_data['doc'], key=lambda p: next(p.get('section', False)) )]
 
-#            except Exception:  # pylint: disable=broad-except
-#                # TODO(joelgrus): catch more specific errors
-#                logger.exception("Unable to add result to database", exc_info=True)
+            mp_results = app.predictors['MP'].predict_json( mp_data )
 
-        if use_cache and post_hits > pre_hits:
-            # Cache hit, so insert an artifical pause
-            log_blob["cached"] = True
-            time.sleep(0.25)
+            if model_name == "doc-slice":
+                top = top_spans( mp_results['paragraph_span_start_logits'], mp_results['paragraph_span_end_logits'], req_data.get('topN', 3) )
 
-        # The model predictions are extremely verbose, so we only log the most human-readable
-        # parts of them.
-        if model_name == "machine-comprehension":
-            log_blob["outputs"]["best_span_str"] = prediction["best_span_str"]
-        elif model_name == "coreference-resolution":
-            log_blob["outputs"]["clusters"] = prediction["clusters"]
-            log_blob["outputs"]["document"] = prediction["document"]
-        elif model_name == "textual-entailment":
-            log_blob["outputs"]["label_probs"] = prediction["label_probs"]
-        elif model_name == "named-entity-recognition":
-            log_blob["outputs"]["tags"] = prediction["tags"]
-        elif model_name == "semantic-role-labeling":
-            verbs = []
-            for verb in prediction["verbs"]:
-                # Don't want to log boring verbs with no semantic parses.
-                good_tags = [tag for tag in verb["tags"] if tag != "0"]
-                if len(good_tags) > 1:
-                    verbs.append({"verb": verb["verb"], "description": verb["description"]})
-            log_blob["outputs"]["verbs"] = verbs
+                bidaf_data['passage'] = ' '.join(
+                    mp_data['passages'][
+                      slice(
+                         min( (t[1] for t in top) ),
+                         1+max( (t[1] for t in top) )
+                      )
+                    ]
+                 )
+            else:
+                bidaf_data['passage'] = mp_data['passages'][mp_results['best_span'][0]]
 
-        elif model_name == "constituency-parsing":
-            log_blob["outputs"]["trees"] = prediction["trees"]
+        results = app.predictors['BiDAF'].predict_json( bidaf_data )
 
-        logger.info("prediction: %s", json.dumps(log_blob))
+        logger.info("prediction: %s", json.dumps({
+            'question': req_data['question'],
+            'span': results['best_span'],
+            'text': results['best_span_str']
+        }))
 
-        print(log_blob)
+        print(results)
 
-        return jsonify(prediction)
-
-    @app.route('/models')
-    def list_models() -> Response:  # pylint: disable=unused-variable
-        """list the available models"""
-        return jsonify({"models": list(app.predictors.keys())})
-
-    @app.route('/info')
-    def info() -> Response:  # pylint: disable=unused-variable
-        """List metadata about the running webserver"""
-        uptime = str(datetime.now(pytz.utc) - start_time)
-        git_version = os.environ.get('SOURCE_COMMIT') or ""
-        return jsonify({
-                "start_time": start_time_str,
-                "uptime": uptime,
-                "git_version": git_version,
-                "peak_memory_mb": peak_memory_mb(),
-                "githubUrl": "http://github.com/allenai/allennlp/commit/" + git_version})
-
-    # As a SPA, we need to return index.html for /model-name and /model-name/permalink
-    @app.route('/semantic-role-labeling')
-    @app.route('/constituency-parsing')
-    @app.route('/machine-comprehension')
-    @app.route('/textual-entailment')
-    @app.route('/coreference-resolution')
-    @app.route('/named-entity-recognition')
-    @app.route('/semantic-role-labeling/<permalink>')
-    @app.route('/constituency-parsing/<permalink>')
-    @app.route('/machine-comprehension/<permalink>')
-    @app.route('/textual-entailment/<permalink>')
-    @app.route('/coreference-resolution/<permalink>')
-    @app.route('/named-entity-recognition/<permalink>')
-    def return_page(permalink: str = None) -> Response:  # pylint: disable=unused-argument, unused-variable
-        """return the page"""
-        return send_file(os.path.join(build_dir, 'index.html'))
-
-    @app.route('/<path:path>')
-    def static_proxy(path: str) -> Response: # pylint: disable=unused-variable
-        return send_from_directory(build_dir, path)
-
-    @app.route('/static/js/<path:path>')
-    def static_js_proxy(path: str) -> Response: # pylint: disable=unused-variable
-        return send_from_directory(os.path.join(build_dir, 'static/js'), path)
+        return jsonify(results)
 
     return app
 
