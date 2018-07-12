@@ -769,8 +769,8 @@ h1 {
 .menu__content nav ul,
 .menu__content nav ul li,
 .menu__content nav ul li .nav__link,
-.menu__content nav ul li .nav__link a,
-.menu__content nav ul li .nav__link a span {
+.menu__content nav ul li .nav__link>a,
+.menu__content nav ul li .nav__link>a span {
   display: block;
   margin: 0;
   padding: 0;
@@ -780,14 +780,22 @@ h1 {
   list-style: none;
 }
 
-.menu__content nav ul li .nav__link a {
+.menu__content nav ul li .nav__link>a,
+.menu__content nav ul li .nav__link>span {
+  display: block;
   padding: 16px 32px 16px 28px;
   position: relative;
   background: transparent;
   transition: background-color 0.2s ease;
 }
 
-.menu__content nav ul li .nav__link a:before {
+.menu__content nav ul li .nav__link input {
+  display: inline-block;
+  width: 4em;
+  margin-right: 0.5em;
+}
+
+.menu__content nav ul li .nav__link>a:before {
   position: absolute;
   width: 7px;
   height: 100%;
@@ -799,7 +807,7 @@ h1 {
   transition: background-color 0.2s ease;
 }
 
-.menu__content nav ul li .nav__link a span {
+.menu__content nav ul li .nav__link>a span {
   color: #979a9d;
   font-size: 16px;
   font-weight: 600;
@@ -807,15 +815,15 @@ h1 {
   transition: color 0.2s ease;
 }
 
-.menu__content nav ul li .nav__link a:hover span {
+.menu__content nav ul li .nav__link>a:hover span {
   color: #1c2f3a;
 }
 
-.menu__content nav ul li .nav__link.nav__link--selected a {
+.menu__content nav ul li .nav__link.nav__link--selected>a {
   background: #f6f7fa;
 }
 
-.menu__content nav ul li .nav__link.nav__link--selected a:before {
+.menu__content nav ul li .nav__link.nav__link--selected>a:before {
   background: #63a7d4;
 }
 

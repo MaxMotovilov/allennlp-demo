@@ -1,18 +1,33 @@
-/**
- * The backend always runs on port 8000. In production we also
- * serve the frontend from there. However, for development
- * we want to `npm run serve` the unminified js on port 3000.
- * This allows us to get the correct API root either way.
- */
+// Everything will be proxied -- no CORS or URL magic required
 
-let apiRoot;
+export const API_ROOT = window && window.location && window.location.origin || "";
 
-const origin = window && window.location && window.location.origin;
-
-if (origin.includes(':3000')) {
-    apiRoot = origin.replace(":3000", ":8080");
-} else {
-    apiRoot = origin;
+export function get( url ) {
+    return fetch( API_ROOT + url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }).then(
+                response => response.json()
+            ).catch( (error) => {
+                console.error( error );
+                throw error;
+            } );
 }
 
-export const API_ROOT = apiRoot;
+export function post( url, data ) {
+    return fetch( API_ROOT + url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify( data )
+            }).then(
+                response => response.json()
+            ).catch( (error) => {
+                console.error( error );
+                throw error;
+            } );
+}

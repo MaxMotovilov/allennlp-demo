@@ -1,52 +1,137 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+/* global window */
+
+import React, {Fragment} from 'react';
+import { Link, Switch, Route, Redirect } from 'react-router-dom';
+
+import { get, post } from '../api-config';
 
 /*******************************************************************************
   <Header /> Component
 *******************************************************************************/
 
-class Menu extends React.Component {
-    render() {
-      const { selectedModel, clearData } = this.props;
+const AddButton = ({onClick}) => (
+    <a href="javascript:" className="nav__add" onClick={onClick}>[+]</a>
+);
 
-      const buildLink = (thisModel, label) => {
-        return (
-          <li>
-            <span className={`nav__link ${selectedModel === thisModel ? "nav__link--selected" : ""}`}>
-              <Link to={"/" + thisModel} onClick={clearData}>
-                <span>{label}</span>
-              </Link>
-            </span>
-          </li>
-        )
-      }
+class AddDoc extends React.Component {
 
-      return (
-        <div className="menu">
-          <div className="menu__content">
-            <h1 className="menu__content__logo">
-              <a href="http://www.allennlp.org/" target="_blank" rel="noopener noreferrer">
-                <svg>
-                  <use xlinkHref="#icon__allennlp-logo"></use>
-                </svg>
-                <span className="u-hidden">AllenNLP</span>
-              </a>
-            </h1>
-            <nav>
-              <ul>
-                {buildLink("machine-comprehension", "Machine Comprehension")}
-                {buildLink("textual-entailment", "Textual Entailment")}
-                {buildLink("semantic-role-labeling", "Semantic Role Labeling")}
-                {buildLink("coreference-resolution", "Coreference Resolution")}
-                {buildLink("named-entity-recognition", "Named Entity Recognition")}
-                {buildLink("constituency-parsing", "Constituency Parsing")}
-                {buildLink("user-models", "Your model here!")}
-              </ul>
-            </nav>
-          </div>
-        </div>
-      );
+    state = {}
+
+    attach = (elt) => {
+        this.input = elt;
+        if( elt )
+            elt.focus();
     }
-  }
+
+    focus = () => {
+        this.setState({ defocusing: false });
+    }
+
+    defocus = () => {
+        window.setTimeout(
+            () => this.setState({ defocusing: true }),
+            100
+        );
+    }
+
+    save = () => {
+        const {input} = this;
+
+        if( !input || !input.value )
+            this.defocus();
+        else
+            post( '/data', [ input.value ] )
+                .then(
+                    response => {
+                        this.props.onOK( response );
+                        this.setState({ navigate: input.value });
+                    },
+                    () => this.defocus()
+                );
+    }
+
+    funcKeys = ({keyCode}) => {
+        if( keyCode === 13 )
+            // Enter
+            this.save();
+        else if( keyCode === 27 )
+            // Escape
+            this.defocus();
+    }
+
+    componentDidUpdate() {
+        if( this.state.defocusing )
+            window.history.back();
+    }
+
+    render() {
+
+        const {navigate} = this.state;
+
+        if( navigate )
+            return (
+                <Redirect to={`/${navigate}`} />
+            );
+
+        return (<span>
+            <input type="text" ref={this.attach} onFocus={this.focus} onBlur={this.defocus} onKeyUp={this.funcKeys} />
+            <AddButton onClick={this.save} onFocus={this.focus} onBlur={this.defocus}  />
+        </span>);
+    }
+}
+
+class Menu extends React.Component {
+
+    state = {docs: []};
+
+    update = docs => this.setState({ docs });
+
+    componentWillMount() {
+        get( "/data" ).then( this.update );
+    }
+
+    render() {
+        const {match: {params: {doc}}} = this.props;
+        const {docs} = this.state;
+
+        return (
+            <div className="menu">
+              <div className="menu__content">
+                <nav>
+                  <ul>
+                    {docs.map(
+                        id => (
+                          <li key={id}>
+                            <span className={`nav__link ${id === doc ? "nav__link--selected" : ""}`}>
+                              <Link to={`/${id}`}>
+                                <span>{id}</span>
+                              </Link>
+                            </span>
+                          </li>
+                        )
+                    )}
+                    <li key="add">
+                        <span className={`nav__link ${doc === "add" ? "nav__link--selected" : ""}`}>
+                            <Switch>
+                                <Route path="/add" children={
+                                    <AddDoc onOK={this.update} />
+                                }/>
+                                <Route children={
+                                    <Link to="/add">
+                                        <span>
+                                            <AddButton /> Add
+                                        </span>
+                                    </Link>
+                                }/>
+                            </Switch>
+                        </span>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
+            </div>
+        );
+    }
+}
 
 export default Menu;
