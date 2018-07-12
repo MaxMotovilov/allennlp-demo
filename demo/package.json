@@ -101,6 +101,16 @@
       "secure": false,
       "changeOrigin": true,
       "logLevel": "info"
-    }
+    },
+	"/data": {
+      "target": {
+        "host": "localhost",
+        "protocol": "http:",
+        "port": 3020
+      },
+      "secure": false,
+      "changeOrigin": true,
+      "logLevel": "info"
+	}
   }
 }
