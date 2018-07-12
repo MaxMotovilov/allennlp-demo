@@ -6,9 +6,11 @@
     "node": ">=8"
   },
   "dependencies": {
-    "express": "^4"
+    "express": "^4",
+    "fs-extra": "^6"
   },
   "scripts": {
-	"start": "node app.js --port 3020 --docs ../../Alorica/etl"
+    "start": "node app.js --port 3020 --docs ../../Alorica/etl",
+    "debug": "node --inspect-brk app.js --port 3020 --docs ../../Alorica/etl"
   }
 }
