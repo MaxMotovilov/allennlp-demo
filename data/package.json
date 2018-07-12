@@ -1,0 +1,14 @@
+{
+  "name": "demo-data",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=8"
+  },
+  "dependencies": {
+    "express": "^4"
+  },
+  "scripts": {
+	"start": "node app.js --port 3020 --docs ../../Alorica/etl"
+  }
+}
