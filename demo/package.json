@@ -90,5 +90,17 @@
   },
   "eslintConfig": {
     "extends": "react-app"
+  },
+  "proxy": {
+    "/predict": {
+      "target": {
+        "host": "localhost",
+        "protocol": "http:",
+        "port": 8080
+      },
+      "secure": false,
+      "changeOrigin": true,
+      "logLevel": "info"
+    }
   }
 }
