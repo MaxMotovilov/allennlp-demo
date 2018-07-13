@@ -35,7 +35,7 @@ function lock() {
 
 function unlock( new_data ) {
     if( new_data )
-        return writeJson( db, new_data, {space: '\t'} ).then( done );
+        return writeJson( db, new_data, {spaces: '\t'} ).then( done );
     else
         return done();
 
