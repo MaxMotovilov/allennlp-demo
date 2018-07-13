@@ -44,7 +44,7 @@ const description = (
 
 class McInput extends React.Component {
 
-    state = { questions: [], questionText: "" }
+    state = { questions: [], questionText: "", model: "doc" }
 
     update = (doc) => {
         if( /^\d+$/.test(doc) )
@@ -71,6 +71,11 @@ class McInput extends React.Component {
         this.setState({ questionText: value });
     }
 
+    handleModelChange = ({target: {value: model}}) => {
+        if( model )
+            this.setState({ model });
+    }
+
     save = () => {
         const {questions, questionText} = this.state;
         const {doc} = this.props;
@@ -86,7 +91,7 @@ class McInput extends React.Component {
 
     render() {
 
-        const {questions, questionText} = this.state;
+        const {questions, questionText, model} = this.state;
 
         return (
             <div className="model__content">
@@ -115,6 +120,16 @@ class McInput extends React.Component {
 
                 <div className="form__field form__field--btn">
                     <Button enabled={/...\?$/.test( questionText )} onClick={this.go}>Answer this!</Button>
+                </div>
+
+                <div className="form__field">
+                    <label>Options</label>
+                    <select onChange={this.handleModelChange} value={model}>
+                        <option value="">Select MC model...</option>
+                        <option value="doc" key="doc">Document at once (BiDAF)</option>
+                        <option value="section" key="doc">Pick section (MP+BiDAF)</option>
+                        <option value="doc-slice" key="doc">Pick best slice (MP+BiDAF)</option>
+                    </select>
                 </div>
             </div>
         );
