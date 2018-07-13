@@ -1,100 +1,15 @@
 import React from 'react';
 
-import { get, post } from '../api-config';
-/*******************************************************************************
-  <ResultDisplay /> Component
-*******************************************************************************/
-
-class ResultDisplay extends React.Component {
-
-    render() {
-      const { resultPane, outputState } = this.props;
-
-      const placeholderTemplate = (message) => {
-        return (
-          <div className="placeholder">
-            <div className="placeholder__content">
-              <svg className={`placeholder__${outputState}`}>
-                <use xlinkHref={`#icon__${outputState}`}></use>
-              </svg>
-              {message !== "" ? (
-                <p>{message}</p>
-              ) : null}
-            </div>
-          </div>
-        );
-      }
-
-      let outputContent;
-      switch (outputState) {
-        case "working":
-          outputContent = placeholderTemplate("");
-          break;
-        case "received":
-          outputContent = this.props.children;
-          break;
-        case "error":
-          outputContent = placeholderTemplate("Something went wrong. Please try again.");
-          break;
-        default:
-          // outputState = "empty"
-          outputContent = placeholderTemplate("Run model to view results");
-      }
-
-      return (
-        <div className={`pane__${resultPane} model__output ${outputState !== "received" ? "model__output--empty" : ""}`}>
-          <div className="pane__thumb"></div>
-          {outputContent}
-        </div>
-      );
-    }
-}
-
-
 /*******************************************************************************
   <PaneRight /> Component
 *******************************************************************************/
 
-export class PaneRight extends React.Component {
-
-    state = { content: [] }
-
-    update( doc ) {
-        if( /^\d+$/.test(doc) )
-            get( `/data/${doc}` ).then( content => this.setState({ content }) );
-        else
-            this.setState({ content: [] });
-    }
-
-    componentWillMount() {
-        this.update( this.props.doc );
-    }
-
-    componentWillReceiveProps( {doc} ) {
-        if( doc !== this.props.doc )
-            this.update( doc );
-    }
-
-    render() {
-
-      let odd = 0;
-
-      return (
-        <div className="pane__right model__output">
-            <div className="pane__thumb"></div>
-            <div className="pane__text">
-                {this.state.content.map(
-                    ({cpar, section}, i) => cpar ? (
-                        <p key={i} className={(odd ^= !!section) ? 'pane__odd' : ''}>
-                            {cpar}
-                        </p>
-                    ) : null
-                )}
-            </div>
-        </div>
-      )
-    }
-}
+export const PaneRight = ({children}) => (
+    <div className="pane__right model__output">
+        <div className="pane__thumb"></div>
+        {children}
+    </div>
+);
 
 /*******************************************************************************
   <PaneBottom /> Component
@@ -105,9 +20,7 @@ export class PaneBottom extends React.Component {
     const { outputState } = this.props;
 
     return (
-      <ResultDisplay resultPane="bottom" outputState={outputState}>
-        {this.props.children}
-      </ResultDisplay>
+        null
     )
   }
 }

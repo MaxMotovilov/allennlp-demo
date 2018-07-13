@@ -1,7 +1,9 @@
 import React from 'react';
 import HeatMap from './heatmap/HeatMap'
 import Collapsible from 'react-collapsible'
-import { API_ROOT } from '../api-config';
+
+import { get, post } from '../api-config';
+
 import { withRouter } from 'react-router-dom';
 import {PaneLeft, PaneRight} from './Pane'
 import Button from './Button'
@@ -51,80 +53,81 @@ const description = (
   </span>
 );
 
-
 class McInput extends React.Component {
-constructor(props) {
-    super(props);
 
-    // If we're showing a permalinked result,
-    // we'll get passed in a passage and question.
-    const { passage, question } = props;
+    state = { questions: [], questionText: "" }
 
-    this.state = {
-      mcPassageValue: passage || "",
-      mcQuestionValue: question || ""
-    };
-    this.handleListChange = this.handleListChange.bind(this);
-    this.handleQuestionChange = this.handleQuestionChange.bind(this);
-    this.handlePassageChange = this.handlePassageChange.bind(this);
-}
-
-handleListChange(e) {
-    if (e.target.value !== "") {
-      this.setState({
-          mcPassageValue: mcExamples[e.target.value].passage,
-          mcQuestionValue: mcExamples[e.target.value].question,
-      });
+    update = (doc) => {
+        if( /^\d+$/.test(doc) )
+            get( `/data/${doc}/questions` ).then( questions => this.setState({ questions }) );
+        else
+            this.setState({ questions: [] });
     }
-}
 
-handlePassageChange(e) {
-    this.setState({
-      mcPassageValue: e.target.value,
-    });
-}
+    componentWillMount() {
+        this.update( this.props.doc );
+    }
 
-handleQuestionChange(e) {
-    this.setState({
-    mcQuestionValue: e.target.value,
-    });
-}
+    componentWillReceiveProps( {doc} ) {
+        if( doc !== this.props.doc )
+            this.update( doc );
+    }
 
-render() {
+    handleListChange = ({target: {value}}) => {
+        if( value )
+            this.setState({ questionText: this.state.questions[value] });
+    }
 
-    const { mcPassageValue, mcQuestionValue } = this.state;
-    const { outputState, runMcModel } = this.props;
+    handleQuestionChange = ({target: {value}}) => {
+        this.setState({ questionText: value });
+    }
 
-    const mcInputs = {
-    "passageValue": mcPassageValue,
-    "questionValue": mcQuestionValue
-    };
+    save = () => {
+        const {questions, questionText} = this.state;
+        const {doc} = this.props;
 
-    return (
-        <div className="model__content">
-        <ModelIntro title={title} description={description} />
-            <div className="form__instructions"><span>Enter text or</span>
-            <select disabled={outputState === "working"} onChange={this.handleListChange}>
-                <option value="">Choose an example...</option>
-                {mcExamples.map((example, index) => {
-                  return (
-                      <option value={index} key={index}>{example.passage.substring(0,60) + "..."}</option>
-                  );
-                })}
-            </select>
+        if( questionText && questions.indexOf(questionText) < 0 )
+            post( `/data/${doc}/questions`, [ questionText ] )
+                .then( questions => this.setState({ questions }) );
+    }
+
+    go = () => {
+        this.save();
+    }
+
+    render() {
+
+        const {questions, questionText} = this.state;
+
+        return (
+            <div className="model__content">
+                <ModelIntro title={title} description={description} />
+                <div className="form__instructions">
+                    <span>Enter question or</span>
+                    <select onChange={this.handleListChange} disabled={questions.length == 0}>
+                        <option value="">select from history...</option>
+                        {questions.map( (text, index) => (
+                              <option value={index} key={index}>{text}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="form__field">
+                    <label htmlFor="#input--mc-question">Question</label>
+                    <input
+                        onChange={this.handleQuestionChange}
+                        id="input--mc-question"
+                        type="text"
+                        required="true"
+                        value={questionText}
+                        placeholder="E.g. &quot;How do I get the boot menu?&quot;"
+                    />
+                </div>
+
+                <div className="form__field form__field--btn">
+                    <Button enabled={/...\?$/.test( questionText )} onClick={this.go}>Answer this!</Button>
+                </div>
             </div>
-            <div className="form__field">
-            <label htmlFor="#input--mc-passage">Passage</label>
-            <textarea onChange={this.handlePassageChange} id="input--mc-passage" type="text" required="true" autoFocus="true" placeholder="E.g. &quot;Saturn is the sixth planet from the Sun and the second-largest in the Solar System, after Jupiter. It is a gas giant with an average radius about nine times that of Earth. Although it has only one-eighth the average density of Earth, with its larger volume Saturn is just over 95 times more massive. Saturn is named after the Roman god of agriculture; its astronomical symbol represents the god&#39;s sickle.&quot;" value={mcPassageValue} disabled={outputState === "working"}></textarea>
-            </div>
-            <div className="form__field">
-            <label htmlFor="#input--mc-question">Question</label>
-            <input onChange={this.handleQuestionChange} id="input--mc-question" type="text" required="true" value={mcQuestionValue} placeholder="E.g. &quot;What does Saturn’s astronomical symbol represent?&quot;" disabled={outputState === "working"} />
-            </div>
-            <div className="form__field form__field--btn">
-            <Button enabled={outputState !== "working"} runModel={runMcModel} inputs={mcInputs} />
-            </div>
-        </div>
         );
     }
 }
@@ -135,46 +138,42 @@ render() {
 *******************************************************************************/
 
 class McOutput extends React.Component {
-    render() {
-      const { passage, answer, attention, question_tokens, passage_tokens } = this.props;
 
-      const start = passage.indexOf(answer);
-      const head = passage.slice(0, start);
-      const tail = passage.slice(start + answer.length);
+    state = { content: [] }
+
+    update( doc ) {
+        if( /^\d+$/.test(doc) )
+            get( `/data/${doc}` ).then( content => this.setState({ content }) );
+        else
+            this.setState({ content: [] });
+    }
+
+    componentWillMount() {
+        this.update( this.props.doc );
+    }
+
+    componentWillReceiveProps( {doc} ) {
+        if( doc !== this.props.doc )
+            this.update( doc );
+    }
+
+    render() {
+
+      let odd = 0;
 
       return (
-        <div className="model__content">
-          <div className="form__field">
-            <label>Answer</label>
-            <div className="model__content__summary">{ answer }</div>
-          </div>
-
-          <div className="form__field">
-            <label>Passage Context</label>
-            <div className="passage model__content__summary">
-              <span>{head}</span>
-              <span className="passage__answer">{answer}</span>
-              <span>{tail}</span>
-            </div>
-          </div>
-
-          <div className="form__field">
-            <Collapsible trigger="Model internals (beta)">
-              <Collapsible trigger="Passage to Question attention">
-                <span>
-                  For every passage word, the model computes an attention over the question words.
-                  This heatmap shows that attention, which is normalized for every row in the matrix.
-                </span>
-                <div className="heatmap">
-                  <HeatMap xLabels={question_tokens} yLabels={passage_tokens} data={attention} />
-                </div>
-              </Collapsible>
-            </Collapsible>
-          </div>
+        <div className="pane__text">
+            {this.state.content.map(
+                ({cpar, section}, i) => cpar ? (
+                    <p key={i} className={(odd ^= !!section) ? 'pane__odd' : ''}>
+                        {cpar}
+                    </p>
+                ) : null
+            )}
         </div>
-      );
+      )
     }
-  }
+}
 
 
 /*******************************************************************************
@@ -182,6 +181,7 @@ class McOutput extends React.Component {
 *******************************************************************************/
 
 class _McComponent extends React.Component {
+/*
     constructor(props) {
       super(props);
 
@@ -195,7 +195,6 @@ class _McComponent extends React.Component {
 
       this.runMcModel = this.runMcModel.bind(this);
     }
-
     runMcModel(event, inputs) {
       this.setState({outputState: "working"});
 
@@ -230,31 +229,25 @@ class _McComponent extends React.Component {
         console.error(error);
       });
     }
-
+*/
     render() {
-      const { requestData, responseData } = this.props;
-
+      const {match: {params: {doc}}} = this.props;
+/*
       const passage = requestData && requestData.passage;
       const question = requestData && requestData.question;
       const answer = responseData && responseData.best_span_str;
       const attention = responseData && responseData.passage_question_attention;
       const question_tokens = responseData && responseData.question_tokens;
       const passage_tokens = responseData && responseData.passage_tokens;
+*/
 
       return (
-        <div className="pane model">
+       <div className="pane model">
           <PaneLeft>
-            <McInput runMcModel={this.runMcModel}
-                     outputState={this.state.outputState}
-                     passage={passage}
-                     question={question}/>
+            <McInput doc={doc} />
           </PaneLeft>
-          <PaneRight outputState={this.state.outputState}>
-            <McOutput passage={passage}
-                      answer={answer}
-                      attention={attention}
-                      question_tokens={question_tokens}
-                      passage_tokens={passage_tokens}/>
+          <PaneRight>
+            <McOutput doc={doc} />
           </PaneRight>
         </div>
       );
