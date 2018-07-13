@@ -1,6 +1,6 @@
 import React from 'react';
 
-
+import { get, post } from '../api-config';
 /*******************************************************************************
   <ResultDisplay /> Component
 *******************************************************************************/
@@ -56,13 +56,42 @@ class ResultDisplay extends React.Component {
 *******************************************************************************/
 
 export class PaneRight extends React.Component {
+
+    state = { content: [] }
+
+    update( doc ) {
+        if( /^\d+$/.test(doc) )
+            get( `/data/${doc}` ).then( content => this.setState({ content }) );
+        else
+            this.setState({ content: [] });
+    }
+
+    componentWillMount() {
+        this.update( this.props.doc );
+    }
+
+    componentWillReceiveProps( {doc} ) {
+        if( doc !== this.props.doc )
+            this.update( doc );
+    }
+
     render() {
-      const { outputState } = this.props;
+
+      let odd = 0;
 
       return (
-        <ResultDisplay resultPane="right" outputState={outputState}>
-          {this.props.children}
-        </ResultDisplay>
+        <div className="pane__right model__output">
+            <div className="pane__thumb"></div>
+            <div className="pane__text">
+                {this.state.content.map(
+                    ({cpar, section}, i) => cpar ? (
+                        <p key={i} className={(odd ^= !!section) ? 'pane__odd' : ''}>
+                            {cpar}
+                        </p>
+                    ) : null
+                )}
+            </div>
+        </div>
       )
     }
 }

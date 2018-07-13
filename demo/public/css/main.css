@@ -819,11 +819,13 @@ h1 {
   color: #1c2f3a;
 }
 
-.menu__content nav ul li .nav__link.nav__link--selected>a {
+.menu__content nav ul li .nav__link.nav__link--selected>a,
+.menu__content nav ul li .nav__link.nav__link--selected>span {
   background: #f6f7fa;
 }
 
-.menu__content nav ul li .nav__link.nav__link--selected>a:before {
+.menu__content nav ul li .nav__link.nav__link--selected>a:before,
+.menu__content nav ul li .nav__link.nav__link--selected>span:before {
   background: #63a7d4;
 }
 
@@ -1103,7 +1105,7 @@ svg {
   width: 100%;
   overflow: auto;
   height: auto;
-  min-height: 100%
+  min-height: 100%;
 }
 
 .pane__right .model__content.model__content--srl-output {
@@ -1128,6 +1130,22 @@ svg {
   width: .25em;
   background: #e1e5ea;
   left: .5em
+}
+
+.pane__text {
+	font-size: 12px;
+	padding: 0 2em;
+	margin: 2em 0 2em -0.625em;
+}
+
+.pane__text p {
+	box-sizing: border-box;
+	padding: 0.5ex 0;
+	margin: 0;
+}
+
+.pane__text p.pane__odd {
+	background-color: #fff8f0;
 }
 
 .passage.model__content__summary {

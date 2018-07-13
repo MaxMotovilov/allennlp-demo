@@ -8,14 +8,12 @@ import { PaneLeft, PaneRight } from './components/Pane'
   <App /> Container
 *******************************************************************************/
 
-const McComponent = () => (
+const McComponent = ({match: {params: {doc}}}) => (
     <div className="pane model">
-      <PaneLeft>
+      <PaneLeft doc={doc}>
         Blah
       </PaneLeft>
-      <PaneRight>
-        Blah
-      </PaneRight>
+      <PaneRight doc={doc} />
     </div>
 );
 
@@ -24,7 +22,7 @@ const App = () => (
     <div>
         <div className="pane-container">
             <Route path="/:doc?" component={Menu} />
-            <Route component={McComponent} />
+            <Route path="/:doc?" component={McComponent} />
         </div>
     </div>
   </Router>
