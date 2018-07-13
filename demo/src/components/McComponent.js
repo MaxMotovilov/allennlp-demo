@@ -69,7 +69,9 @@ class McInput extends React.Component {
 
     go = () => {
         this.save();
-        this.props.mc.predict();
+        this.props.mc.predict( this.state.questionText )
+             .then( () => this.setState({ running: false }) );
+        this.setState({ running: true });
     }
 
     render() {
@@ -112,8 +114,8 @@ class McInput extends React.Component {
                     <select onChange={this.handleModelChange} value={model} disabled={running}>
                         <option value="">Select MC model...</option>
                         <option value="doc" key="doc">Document at once (BiDAF)</option>
-                        <option value="section" key="doc">Pick section (MP+BiDAF)</option>
-                        <option value="doc-slice" key="doc">Pick best slice (MP+BiDAF)</option>
+                        <option value="section" key="section">Pick section (MP+BiDAF)</option>
+                        <option value="doc-slice" key="doc-slice">Pick best slice (MP+BiDAF)</option>
                     </select>
                 </div>
             </div>
@@ -158,9 +160,13 @@ class _McComponent extends React.Component {
             this.setState({ doc, content: [] });
     }
 
-    predict = () => {
-        const {questionText, model} = this.state;
-//		post( `/predict/${model}`,
+    predict = ( question ) => {
+        const {model, content} = this.state;
+        return post( `/predict/${model}`, {question, doc: content} )
+                    .then(
+                        result => console.log( result ),
+                        err => console.error( err )
+                    );
     }
 
     componentWillMount() {
