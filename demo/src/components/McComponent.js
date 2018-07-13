@@ -14,25 +14,6 @@ import ModelIntro from './ModelIntro'
   <McInput /> Component
 *******************************************************************************/
 
-const mcExamples = [
-    {
-      passage: "A reusable launch system (RLS, or reusable launch vehicle, RLV) is a launch system which is capable of launching a payload into space more than once. This contrasts with expendable launch systems, where each launch vehicle is launched once and then discarded. No completely reusable orbital launch system has ever been created. Two partially reusable launch systems were developed, the Space Shuttle and Falcon 9. The Space Shuttle was partially reusable: the orbiter (which included the Space Shuttle main engines and the Orbital Maneuvering System engines), and the two solid rocket boosters were reused after several months of refitting work for each launch. The external tank was discarded after each flight.",
-      question: "How many partially reusable launch systems were developed?",
-    },
-    {
-      passage: "Robotics is an interdisciplinary branch of engineering and science that includes mechanical engineering, electrical engineering, computer science, and others. Robotics deals with the design, construction, operation, and use of robots, as well as computer systems for their control, sensory feedback, and information processing. These technologies are used to develop machines that can substitute for humans. Robots can be used in any situation and for any purpose, but today many are used in dangerous environments (including bomb detection and de-activation), manufacturing processes, or where humans cannot survive. Robots can take on any form but some are made to resemble humans in appearance. This is said to help in the acceptance of a robot in certain replicative behaviors usually performed by people. Such robots attempt to replicate walking, lifting, speech, cognition, and basically anything a human can do.",
-      question: "What do robots that resemble humans attempt to do?",
-    },
-    {
-      passage: "The Matrix is a 1999 science fiction action film written and directed by The Wachowskis, starring Keanu Reeves, Laurence Fishburne, Carrie-Anne Moss, Hugo Weaving, and Joe Pantoliano. It depicts a dystopian future in which reality as perceived by most humans is actually a simulated reality called \"the Matrix\", created by sentient machines to subdue the human population, while their bodies' heat and electrical activity are used as an energy source. Computer programmer \"Neo\" learns this truth and is drawn into a rebellion against the machines, which involves other people who have been freed from the \"dream world.\"",
-      question: "Who stars in The Matrix?",
-    },
-    {
-      passage: "Kerbal Space Program (KSP) is a space flight simulation video game developed and published by Squad for Microsoft Windows, OS X, Linux, PlayStation 4, Xbox One, with a Wii U version that was supposed to be released at a later date. The developers have stated that the gaming landscape has changed since that announcement and more details will be released soon. In the game, players direct a nascent space program, staffed and crewed by humanoid aliens known as \"Kerbals\". The game features a realistic orbital physics engine, allowing for various real-life orbital maneuvers such as Hohmann transfer orbits and bi-elliptic transfer orbits.",
-      question: "What does the physics engine allow for?",
-    }
-];
-
 const title = "Machine Comprehension";
 const description = (
   <span>
@@ -44,7 +25,7 @@ const description = (
 
 class McInput extends React.Component {
 
-    state = { questions: [], questionText: "", model: "doc" }
+    state = { questions: [], questionText: "", running: false }
 
     update = (doc) => {
         if( /^\d+$/.test(doc) )
@@ -73,7 +54,7 @@ class McInput extends React.Component {
 
     handleModelChange = ({target: {value: model}}) => {
         if( model )
-            this.setState({ model });
+            this.props.mc.setState({ model });
     }
 
     save = () => {
@@ -85,20 +66,23 @@ class McInput extends React.Component {
                 .then( questions => this.setState({ questions }) );
     }
 
+
     go = () => {
         this.save();
+        this.props.mc.predict();
     }
 
     render() {
 
-        const {questions, questionText, model} = this.state;
+        const {questions, questionText, running} = this.state;
+        const {model} = this.props;
 
         return (
             <div className="model__content">
                 <ModelIntro title={title} description={description} />
                 <div className="form__instructions">
                     <span>Enter question or</span>
-                    <select onChange={this.handleListChange} disabled={questions.length == 0}>
+                    <select onChange={this.handleListChange} disabled={running || questions.length == 0}>
                         <option value="">select from history...</option>
                         {questions.map( (text, index) => (
                               <option value={index} key={index}>{text}</option>
@@ -109,6 +93,7 @@ class McInput extends React.Component {
                 <div className="form__field">
                     <label htmlFor="#input--mc-question">Question</label>
                     <input
+                        readOnly={running}
                         onChange={this.handleQuestionChange}
                         id="input--mc-question"
                         type="text"
@@ -119,12 +104,12 @@ class McInput extends React.Component {
                 </div>
 
                 <div className="form__field form__field--btn">
-                    <Button enabled={/...\?$/.test( questionText )} onClick={this.go}>Answer this!</Button>
+                    <Button enabled={!running && /...\?$/.test( questionText )} onClick={this.go}>Answer this!</Button>
                 </div>
 
                 <div className="form__field">
                     <label>Options</label>
-                    <select onChange={this.handleModelChange} value={model}>
+                    <select onChange={this.handleModelChange} value={model} disabled={running}>
                         <option value="">Select MC model...</option>
                         <option value="doc" key="doc">Document at once (BiDAF)</option>
                         <option value="section" key="doc">Pick section (MP+BiDAF)</option>
@@ -141,33 +126,12 @@ class McInput extends React.Component {
   <McOutput /> Component
 *******************************************************************************/
 
-class McOutput extends React.Component {
-
-    state = { content: [] }
-
-    update( doc ) {
-        if( /^\d+$/.test(doc) )
-            get( `/data/${doc}` ).then( content => this.setState({ content }) );
-        else
-            this.setState({ content: [] });
-    }
-
-    componentWillMount() {
-        this.update( this.props.doc );
-    }
-
-    componentWillReceiveProps( {doc} ) {
-        if( doc !== this.props.doc )
-            this.update( doc );
-    }
-
-    render() {
-
+const McOutput = ({content}) => {
       let odd = 0;
 
       return (
         <div className="pane__text">
-            {this.state.content.map(
+            {content.map(
                 ({cpar, section}, i) => cpar ? (
                     <p key={i} className={(odd ^= !!section) ? 'pane__odd' : ''}>
                         {cpar}
@@ -176,7 +140,6 @@ class McOutput extends React.Component {
             )}
         </div>
       )
-    }
 }
 
 
@@ -185,73 +148,40 @@ class McOutput extends React.Component {
 *******************************************************************************/
 
 class _McComponent extends React.Component {
-/*
-    constructor(props) {
-      super(props);
 
-      const { requestData, responseData } = props;
+    state = { content: [], model: "doc" }
 
-      this.state = {
-        outputState: responseData ? "received" : "empty", // valid values: "working", "empty", "received", "error"
-        requestData: requestData,
-        responseData: responseData
-      };
-
-      this.runMcModel = this.runMcModel.bind(this);
+    update( doc ) {
+        if( /^\d+$/.test(doc) )
+            get( `/data/${doc}` ).then( content => this.setState({ doc, content }) );
+        else
+            this.setState({ doc, content: [] });
     }
-    runMcModel(event, inputs) {
-      this.setState({outputState: "working"});
 
-      var payload = {
-        passage: inputs.passageValue,
-        question: inputs.questionValue,
-      };
-      fetch(`${API_ROOT}/predict/machine-comprehension`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      }).then((response) => {
-        return response.json();
-      }).then((json) => {
-        // If the response contains a `slug` for a permalink, we want to redirect
-        // to the corresponding path using `history.push`.
-        const { slug } = json;
-        const newPath = slug ? '/machine-comprehension/' + slug : '/machine-comprehension';
-
-        // We'll pass the request and response data along as part of the location object
-        // so that the `Demo` component can use them to re-render.
-        const location = {
-          pathname: newPath,
-          state: { requestData: payload, responseData: json }
-        }
-        this.props.history.push(location);
-      }).catch((error) => {
-        this.setState({outputState: "error"});
-        console.error(error);
-      });
+    predict = () => {
+        const {questionText, model} = this.state;
+//		post( `/predict/${model}`,
     }
-*/
+
+    componentWillMount() {
+        this.update( this.props.match.params.doc );
+    }
+
+    componentWillReceiveProps( {match: {params: {doc}}} ) {
+        if( doc !== this.state.doc )
+            this.update( doc );
+    }
+
     render() {
-      const {match: {params: {doc}}} = this.props;
-/*
-      const passage = requestData && requestData.passage;
-      const question = requestData && requestData.question;
-      const answer = responseData && responseData.best_span_str;
-      const attention = responseData && responseData.passage_question_attention;
-      const question_tokens = responseData && responseData.question_tokens;
-      const passage_tokens = responseData && responseData.passage_tokens;
-*/
+      const {doc, content, model} = this.state;
 
       return (
        <div className="pane model">
           <PaneLeft>
-            <McInput doc={doc} />
+            <McInput mc={this} doc={doc} model={model} />
           </PaneLeft>
           <PaneRight>
-            <McOutput doc={doc} />
+            <McOutput mc={this} doc={doc} content={content} />
           </PaneRight>
         </div>
       );
