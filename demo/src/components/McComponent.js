@@ -36,20 +36,9 @@ const mcExamples = [
 const title = "Machine Comprehension";
 const description = (
   <span>
-    <span>
-      Machine Comprehension (MC) answers natural language questions by selecting an answer span within an evidence text.
-      The AllenNLP toolkit provides the following MC visualization, which can be used for any MC model in AllenNLP.
-      This page demonstrates a reimplementation of
-    </span>
-    <a href = "https://www.semanticscholar.org/paper/Bidirectional-Attention-Flow-for-Machine-Comprehen-Seo-Kembhavi/007ab5528b3bd310a80d553cccad4b78dc496b02" target="_blank" rel="noopener noreferrer">{' '} BiDAF (Seo et al, 2017)</a>
-    <span>
-      , or Bi-Directional Attention Flow,
-      a widely used MC baseline that achieved state-of-the-art accuracies on
-    </span>
-    <a href = "https://rajpurkar.github.io/SQuAD-explorer/" target="_blank" rel="noopener noreferrer">{' '} the SQuAD dataset {' '}</a>
-    <span>
-      (Wikipedia sentences) in early 2017.
-    </span>
+      Machine Comprehension (MC) answers natural language questions by selecting an answer span within evidence text.
+      This visualization works with a single specific PDF document; search through the entire document collection will be
+      demonstrated by the next PoC.
   </span>
 );
 
