@@ -184,9 +184,49 @@ def make_app(build_dir: str = None) -> Flask:
             'text': results['best_span_str']
         }))
 
-        return jsonify(results)
+        char_range = map_span( tuple( results['best_span'] ), results['passage_tokens'], (p['cpar'] for p in req_data['doc']) )
+
+        return jsonify({
+            'text': results['best_span_str'],
+            'range': char_range
+        })
 
     return app
+
+class TokenMatcher(object):
+    def __init__(self, paragraph_iterator):
+        self.iter = paragraph_iterator
+        self.par = -1
+        self.pos = 0
+        self.top = ""
+
+    def next( token ):
+        while self.top[:len(token)] != token:
+            if self.top == "":
+                try:
+                    self.top = paragraph_iterator.__next__()
+                except StopIteration:
+                    raise ServerError( "ran out of passage on '{}'".format(token), status_code=500 )
+                self.pos = 0
+                self.par += 1
+            else:
+                self.top = self.top[1:]
+        result = self.pos
+        self.pos += len(token)
+        return self.par, result, self.pos
+
+def map_span( span, tokens, text ):
+    b, e = span
+    m = TokenMatcher( text )
+
+    for i in range(len(tokens)):
+        par, f, t = m.next(tokens[i])
+        if i==b:
+            begin = (par, f)
+        elif i==e:
+            return begin, (par, t)
+
+    raise ServerError( "{} is outside range of tokens".format(e), status_code=500 )
 
 if __name__ == "__main__":
     main()
