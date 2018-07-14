@@ -152,9 +152,15 @@ def make_app(build_dir: str = None) -> Flask:
                 mp_data['passages'] = [p['cpar'] for p in req_data['doc']]
             else:
                 next = Next(0)
-                mp_data['passages'] = [" ".join( (p['cpar'] for p in g) ) for g in groupby( req_data['doc'], key=lambda p: next(p.get('section', False)) )]
+                mp_data['passages'] = [" ".join( (p['cpar'] for p in g) ) for _, g in groupby( req_data['doc'], key=lambda p: next(p.get('section', False)) )]
 
             mp_results = app.predictors['MP'].predict_json( mp_data )
+
+            logger.info("MP prediction: %s", json.dumps({
+                'question': req_data['question'],
+                'span': mp_results['best_span'],
+                'text': mp_results['best_span_str']
+            }))
 
             if model_name == "doc-slice":
                 top = top_spans( mp_results['paragraph_span_start_logits'], mp_results['paragraph_span_end_logits'], req_data.get('topN', 3) )
@@ -172,13 +178,11 @@ def make_app(build_dir: str = None) -> Flask:
 
         results = app.predictors['BiDAF'].predict_json( bidaf_data )
 
-        logger.info("prediction: %s", json.dumps({
+        logger.info("BiDAF prediction: %s", json.dumps({
             'question': req_data['question'],
             'span': results['best_span'],
             'text': results['best_span_str']
         }))
-
-        print(results)
 
         return jsonify(results)
 
