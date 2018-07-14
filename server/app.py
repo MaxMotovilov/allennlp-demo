@@ -200,19 +200,23 @@ class TokenMatcher(object):
         self.pos = 0
         self.top = ""
 
-    def next( token ):
+    def next(self, token):
         while self.top[:len(token)] != token:
             if self.top == "":
                 try:
-                    self.top = paragraph_iterator.__next__()
+                    self.top = self.iter.__next__()
                 except StopIteration:
                     raise ServerError( "ran out of passage on '{}'".format(token), status_code=500 )
                 self.pos = 0
                 self.par += 1
             else:
                 self.top = self.top[1:]
+                self.pos += 1
+
         result = self.pos
         self.pos += len(token)
+        self.top = self.top[len(token):]
+
         return self.par, result, self.pos
 
 def map_span( span, tokens, text ):
