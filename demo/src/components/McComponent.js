@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {Fragment} from 'react';
 import HeatMap from './heatmap/HeatMap'
 import Collapsible from 'react-collapsible'
 
@@ -128,20 +128,46 @@ class McInput extends React.Component {
   <McOutput /> Component
 *******************************************************************************/
 
-const McOutput = ({content}) => {
-      let odd = 0;
+const makeHighlight = (text, top) => (
+    <span className="passage__answer" ref={top && (elt => elt && elt.scrollIntoView())}>{text}</span>
+);
 
-      return (
+const McOutput = ({content, prediction}) => {
+    let odd = 0;
+
+    function highlight( text, n ) {
+        const {range: [[begin, beginPos], [end, endPos]]}	 = prediction;
+        return n < begin || n > end ? text :
+                begin == end ? (
+                    <Fragment>
+                        {text.substring( 0, beginPos )}
+                        {makeHighlight(text.substring( beginPos, endPos ), true)}
+                        {text.substring( endPos )}
+                    </Fragment>
+                ) :	n == begin ? (
+                    <Fragment>
+                        {text.substring( 0, beginPos )}
+                        {makeHighlight(text.substring( beginPos ), true)}
+                    </Fragment>
+                ) : n == end ? (
+                    <Fragment>
+                        {makeHighlight(text.substring( 0, endPos ))}
+                        {text.substring( endPos )}
+                    </Fragment>
+                ) : makeHighlight(text);
+    }
+
+    return (
         <div className="pane__text">
             {content.map(
                 ({cpar, section}, i) => cpar ? (
                     <p key={i} className={(odd ^= !!section) ? 'pane__odd' : ''}>
-                        {cpar}
+                        {prediction ? highlight(cpar, i) : cpar}
                     </p>
                 ) : null
             )}
         </div>
-      )
+    )
 }
 
 
@@ -155,16 +181,17 @@ class _McComponent extends React.Component {
 
     update( doc ) {
         if( /^\d+$/.test(doc) )
-            get( `/data/${doc}` ).then( content => this.setState({ doc, content }) );
+            get( `/data/${doc}` ).then( content => this.setState({ doc, content, prediction: null }) );
         else
             this.setState({ doc, content: [] });
     }
 
     predict = ( question ) => {
         const {model, content} = this.state;
+        this.setState({ prediction: null });
         return post( `/predict/${model}`, {question, doc: content} )
                     .then(
-                        result => console.log( result ),
+                        prediction => { console.log( prediction ); this.setState({ prediction }); },
                         err => console.error( err )
                     );
     }
@@ -179,7 +206,7 @@ class _McComponent extends React.Component {
     }
 
     render() {
-      const {doc, content, model} = this.state;
+      const {doc, content, model, prediction} = this.state;
 
       return (
        <div className="pane model">
@@ -187,7 +214,7 @@ class _McComponent extends React.Component {
             <McInput mc={this} doc={doc} model={model} />
           </PaneLeft>
           <PaneRight>
-            <McOutput mc={this} doc={doc} content={content} />
+            <McOutput mc={this} doc={doc} content={content} prediction={prediction} />
           </PaneRight>
         </div>
       );
