@@ -114,8 +114,10 @@ class McInput extends React.Component {
                     <select onChange={this.handleModelChange} value={model} disabled={running}>
                         <option value="">Select MC model...</option>
                         <option value="doc" key="doc">Document at once (BiDAF)</option>
-                        <option value="section" key="section">Pick section (MP+BiDAF)</option>
-                        <option value="doc-slice" key="doc-slice">Pick best slice (MP+BiDAF)</option>
+                        <option value="section" key="section">Pick section (TF/IDF+BiDAF)</option>
+                        <option value="doc-slice" key="doc-slice">Pick best slice (TF/IDF+BiDAF)</option>
+                        <option value="section-mp" key="section-mp">Pick section (MP+BiDAF)</option>
+                        <option value="doc-slice-mp" key="doc-slice-mp">Pick best slice (MP+BiDAF)</option>
                     </select>
                 </div>
             </div>

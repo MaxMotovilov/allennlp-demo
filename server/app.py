@@ -11,7 +11,7 @@ import os
 import sys
 import time
 from functools import lru_cache
-from itertools import groupby
+from itertools import groupby, islice
 
 from flask import Flask, request, Response, jsonify, send_file, send_from_directory
 from flask_cors import CORS
@@ -25,6 +25,9 @@ from allennlp.common.util import JsonDict, peak_memory_mb
 
 from server.models import MODELS
 from allennlp.predictors.predictor import Predictor
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import pairwise_distances
 
 # Can override cache size with an environment variable. If it's 0 then disable caching altogether.
 CACHE_SIZE = os.environ.get("FLASK_CACHE_SIZE") or 128
@@ -75,19 +78,28 @@ class Next(object):
             self.value += 1
         return self.value
 
-def top_spans( starts, ends, n ):
+def mp_scores( starts, ends ):
     assert len(starts) == len(ends)
-    return sorted(
-              (
-                max(
-                  (
-                     (starts[p][i] + ends[p][j], p, i, j)
-                       for i in range(len(starts[p]))
-                         for j in range(i, len(ends[p]))
-                  )
-                ) for p in range(len(starts))
-              ), reverse=True
-            )[:n]
+    return [
+        max(
+            (
+                 (starts[p][i] + ends[p][j], p, i, j)
+                   for i in range(len(starts[p]))
+                     for j in range(i, len(ends[p]))
+            )
+        ) for p in range(len(starts))
+    ]
+
+def window(seq, n=2):
+    "Returns a sliding window (of width n) over data from the iterable"
+    "   s -> (s0,s1,...s[n-1]), (s1,s2,...,sn), ...                   "
+    it = iter(seq)
+    result = tuple(islice(it, n))
+    if len(result) == n:
+        yield result
+    for elem in it:
+        result = result[1:] + (elem,)
+        yield result
 
 def make_app(build_dir: str = None) -> Flask:
     if build_dir is None:
@@ -132,52 +144,66 @@ def make_app(build_dir: str = None) -> Flask:
         if request.method == "OPTIONS":
             return Response(response="", status=200)
 
+        if model_name not in {'doc', 'section', 'doc-slice', 'section-mp', 'doc-slice-mp'}:
+            raise ServerError("unknown predictor: {}".format(model_name), status_code=404)
+
         req_data = request.get_json()
 
         bidaf_data = {
             'question': req_data['question']
         }
 
-        if model_name == "doc":
-            passages = [p['cpar'] for p in req_data['doc']]
-            bidaf_data['passage'] = " ".join( passages )
+        if model_name in {"doc", "doc-slice", "doc-slice-mp"}:
+            paragraphs = [p['cpar'] for p in req_data['doc']]
         else:
-            if model_name != "section" and model_name != "doc-slice":
-                raise ServerError("unknown predictor: {}".format(model_name), status_code=404)
+            next = Next(0)
+            sections = [[p['cpar'] for p in g] for _, g in groupby( req_data['doc'], key=lambda p: next(p.get('section', False)) )]
+
+        if model_name == "doc":
+            bidaf_data['passage'] = " ".join( paragraphs )
+        else:
+            if model_name in {"doc-slice", "doc-slice-mp"}:
+                slice_size = req_data.get( "sliceSize", 10 );
+
+            if model_name in {"doc-slice", "section"}:
+                tfidf = TfidfVectorizer(strip_accents="unicode", stop_words="")
+                question_features = tfidf.transform([question])
 
             if model_name == "doc-slice":
-                passages = [p['cpar'] for p in req_data['doc']]
-
+                scores = pairwise_distances(question_features, tfidf.fit_transform(paragraphs), "cosine").ravel()
+            elif model_name == "section":
+                scores = pairwise_distances(question_features, tfidf.fit_transform( (" ".join(s) for s in sections) ), "cosine").ravel()
+                best_section = max( range(len(sections)), key = lambda i: scores[i] )
+            elif model_name == "doc-slice-mp":
                 mp_data = {
                     'question': req_data['question'],
-                    'passages': passages
+                    'passages': paragraphs
                 }
-
                 mp_results = app.predictors['MP'].predict_json( mp_data )
-            else:
-                next = Next(0)
-                sections = [[p['cpar'] for p in g] for _, g in groupby( req_data['doc'], key=lambda p: next(p.get('section', False)) )]
+            else: # if model_name == "section-mp":
                 mp_data = [
                     {
                         'question': req_data['question'],
                         'passages': s
                     } for s in sections
                 ]
-
                 mp_results = app.predictors['MP'].predict_batch_json( mp_data )
                 best_section = max( range(len(mp_results)), key = lambda i: logit_score(mp_results[i]) )
                 mp_results = mp_results[ best_section ]
 
-            logger.info("MP prediction: %s", json.dumps({
-                'question': req_data['question'],
-                'span': mp_results['best_span'],
-                'text': mp_results['best_span_str']
-            }))
+            if model_name in {"doc-slice-mp", "section-mp"}:
+                logger.info("MP prediction: %s", json.dumps({
+                    'question': req_data['question'],
+                    'span': mp_results['best_span'],
+                    'text': mp_results['best_span_str']
+                }))
 
-            if model_name == "doc-slice":
-                top = top_spans( mp_results['paragraph_span_start_logits'], mp_results['paragraph_span_end_logits'], req_data.get('topN', 3) )
-                slc = slice( min( (t[1] for t in top) ), 1+max( (t[1] for t in top) ) )
-                bidaf_data['passage'] = ' '.join( passages[slc] )
+            if model_name == "doc-slice-mp":
+                scores = mp_scores(mp_results['paragraph_span_start_logits'], mp_results['paragraph_span_end_logits'])
+
+            if model_name in {"doc-slice", "doc-slice-mp"}:
+                best = max(enumerate(window(scores, slice_size)), lambda e: sum(e[1]))
+                bidaf_data['passage'] = ' '.join( paragraphs[best:best+slize_size] )
             else:
                 bidaf_data['passage'] = ' '.join( sections[best_section] )
 
@@ -190,11 +216,11 @@ def make_app(build_dir: str = None) -> Flask:
         }))
 
         if model_name == "doc":
-            char_range = map_span( tuple( results['best_span'] ), results['passage_tokens'], passages )
-        elif model_name == "doc-slice":
-            f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], passages[slc] )
-            char_range = (add_par(f, slc.start), add_par(t, slc.start))
-        else:
+            char_range = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs )
+        elif model_name in {"doc-slice", "doc-slice-mp"}:
+            f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs[best:best+slize_size] )
+            char_range = (add_par(f, best), add_par(t, best))
+        else: # if model_name in {"section", "section-mp"}:
             f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], sections[best_section] )
             offs = sum( ( len(sections[s]) for s in range(best_section) ) )
             char_range = (add_par(f, offs), add_par(t, offs))
