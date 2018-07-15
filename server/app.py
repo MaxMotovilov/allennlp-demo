@@ -144,17 +144,26 @@ def make_app(build_dir: str = None) -> Flask:
             if model_name != "section" and model_name != "doc-slice":
                 raise ServerError("unknown predictor: {}".format(model_name), status_code=404)
 
-            mp_data = {
-                'question': req_data['question']
-            }
-
             if model_name == "doc-slice":
-                mp_data['passages'] = [p['cpar'] for p in req_data['doc']]
+                mp_data = {
+                    'question': req_data['question'],
+                    'passages': [p['cpar'] for p in req_data['doc']]
+                }
+
+                mp_results = app.predictors['MP'].predict_json( mp_data )
             else:
                 next = Next(0)
-                mp_data['passages'] = [" ".join( (p['cpar'] for p in g) ) for _, g in groupby( req_data['doc'], key=lambda p: next(p.get('section', False)) )]
+                sections = [[p['cpar'] for p in g] for _, g in groupby( req_data['doc'], key=lambda p: next(p.get('section', False)) )]
+                mp_data = [
+                    {
+                        'question': req_data['question'],
+                        'passages': s
+                    } for s in sections
+                ]
 
-            mp_results = app.predictors['MP'].predict_json( mp_data )
+                mp_results = app.predictors['MP'].predict_batch_json( mp_data )
+                best_section = max( range(len(mp_results)), key = lambda i: logit_score(mp_results[i]) )
+                mp_results = mp_results[ best_section ]
 
             logger.info("MP prediction: %s", json.dumps({
                 'question': req_data['question'],
@@ -164,15 +173,8 @@ def make_app(build_dir: str = None) -> Flask:
 
             if model_name == "doc-slice":
                 top = top_spans( mp_results['paragraph_span_start_logits'], mp_results['paragraph_span_end_logits'], req_data.get('topN', 3) )
-
-                bidaf_data['passage'] = ' '.join(
-                    mp_data['passages'][
-                      slice(
-                         min( (t[1] for t in top) ),
-                         1+max( (t[1] for t in top) )
-                      )
-                    ]
-                 )
+                slc = slice( min( (t[1] for t in top) ), 1+max( (t[1] for t in top) ) )
+                bidaf_data['passage'] = ' '.join( mp_data['passages'][slc] )
             else:
                 bidaf_data['passage'] = mp_data['passages'][mp_results['best_span'][0]]
 
@@ -184,7 +186,15 @@ def make_app(build_dir: str = None) -> Flask:
             'text': results['best_span_str']
         }))
 
-        char_range = map_span( tuple( results['best_span'] ), results['passage_tokens'], (p['cpar'] for p in req_data['doc']) )
+        if model_name == "doc":
+            char_range = map_span( tuple( results['best_span'] ), results['passage_tokens'], mp_data['passages'] )
+        elif model_name == "doc-slice":
+            f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], mp_data['passages'][slc] )
+            char_range = (add_par(f, slc.start), add_par(t, slc.start))
+        else:
+            f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], sections[best_section] )
+            offs = sum( ( len(section[s]) for s in range(best_section) ) )
+            char_range = (add_par(f, offs), add_par(t, offs))
 
         return jsonify({
             'text': results['best_span_str'],
@@ -192,6 +202,14 @@ def make_app(build_dir: str = None) -> Flask:
         })
 
     return app
+
+def add_par(par_pos, add):
+    par, pos = par_pos
+    return par+add, pos
+
+def logit_score(output):
+    par, f, t = output['best_span']
+    return output['paragraph_span_start_logits'][par][f] + output['paragraph_span_end_logits'][par][t]
 
 class TokenMatcher(object):
     def __init__(self, paragraph_iterator):
