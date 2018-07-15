@@ -139,15 +139,18 @@ def make_app(build_dir: str = None) -> Flask:
         }
 
         if model_name == "doc":
-            bidaf_data['passage'] = " ".join( (p['cpar'] for p in req_data['doc']) )
+            passages = [p['cpar'] for p in req_data['doc']]
+            bidaf_data['passage'] = " ".join( passages )
         else:
             if model_name != "section" and model_name != "doc-slice":
                 raise ServerError("unknown predictor: {}".format(model_name), status_code=404)
 
             if model_name == "doc-slice":
+                passages = [p['cpar'] for p in req_data['doc']]
+
                 mp_data = {
                     'question': req_data['question'],
-                    'passages': [p['cpar'] for p in req_data['doc']]
+                    'passages': passages
                 }
 
                 mp_results = app.predictors['MP'].predict_json( mp_data )
@@ -174,9 +177,9 @@ def make_app(build_dir: str = None) -> Flask:
             if model_name == "doc-slice":
                 top = top_spans( mp_results['paragraph_span_start_logits'], mp_results['paragraph_span_end_logits'], req_data.get('topN', 3) )
                 slc = slice( min( (t[1] for t in top) ), 1+max( (t[1] for t in top) ) )
-                bidaf_data['passage'] = ' '.join( mp_data['passages'][slc] )
+                bidaf_data['passage'] = ' '.join( passages[slc] )
             else:
-                bidaf_data['passage'] = mp_data['passages'][mp_results['best_span'][0]]
+                bidaf_data['passage'] = ' '.join( sections[best_section] )
 
         results = app.predictors['BiDAF'].predict_json( bidaf_data )
 
@@ -187,13 +190,13 @@ def make_app(build_dir: str = None) -> Flask:
         }))
 
         if model_name == "doc":
-            char_range = map_span( tuple( results['best_span'] ), results['passage_tokens'], mp_data['passages'] )
+            char_range = map_span( tuple( results['best_span'] ), results['passage_tokens'], passages )
         elif model_name == "doc-slice":
-            f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], mp_data['passages'][slc] )
+            f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], passages[slc] )
             char_range = (add_par(f, slc.start), add_par(t, slc.start))
         else:
             f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], sections[best_section] )
-            offs = sum( ( len(section[s]) for s in range(best_section) ) )
+            offs = sum( ( len(sections[s]) for s in range(best_section) ) )
             char_range = (add_par(f, offs), add_par(t, offs))
 
         return jsonify({
@@ -212,8 +215,8 @@ def logit_score(output):
     return output['paragraph_span_start_logits'][par][f] + output['paragraph_span_end_logits'][par][t]
 
 class TokenMatcher(object):
-    def __init__(self, paragraph_iterator):
-        self.iter = paragraph_iterator
+    def __init__(self, paragraphs):
+        self.iter = iter(paragraphs)
         self.par = -1
         self.pos = 0
         self.top = ""
@@ -222,7 +225,7 @@ class TokenMatcher(object):
         while self.top[:len(token)] != token:
             if self.top == "":
                 try:
-                    self.top = self.iter.__next__()
+                    self.top = next(self.iter)
                 except StopIteration:
                     raise ServerError( "ran out of passage on '{}'".format(token), status_code=500 )
                 self.pos = 0
