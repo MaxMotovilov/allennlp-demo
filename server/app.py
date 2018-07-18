@@ -153,7 +153,7 @@ def make_app(build_dir: str = None) -> Flask:
             'question': req_data['question']
         }
 
-        if model_name in {"doc", "doc-slice", "doc-slice-mp"}:
+        if model_name in {"doc", "doc-slice", "doc-slice-mp", "baseline"}:
             paragraphs = [p['cpar'] for p in req_data['doc']]
         else:
             next = Next(0)
@@ -176,8 +176,10 @@ def make_app(build_dir: str = None) -> Flask:
                 question_features = tfidf.transform([req_data['question']])
                 scores = -pairwise_distances(question_features, text_features, "cosine").ravel() + 1
 
-                if model_name in {"section", "baseline"}:
+                if model_name == "section":
                     best_section = max( range(len(sections)), key = lambda i: scores[i] )
+                elif model_name == "baseline":
+                    best_section = max( range(len(paragraphs)), key = lambda i: scores[i] )
                 else: # if model_name == "doc-slice":
                     slice_scores = [
                         1 - pairwise_distances(question_features, tfidf.transform([ " ".join(s_texts) ]), "cosine").ravel()[0]
@@ -211,7 +213,7 @@ def make_app(build_dir: str = None) -> Flask:
                     best, scores = max(enumerate(window(scores, slice_size)), key = lambda e: sum(e[1]))
                 bidaf_data['passage'] = ' '.join( paragraphs[best:best+slice_size] )
                 logger.info("Best slice at %d: %s", best, scores)
-            else: # if model_name in {"section", "section-mp"}:
+            elif model_name in {"section", "section-mp"}:
                 bidaf_data['passage'] = ' '.join( sections[best_section] )
 
         if model_name != "baseline":
@@ -233,7 +235,7 @@ def make_app(build_dir: str = None) -> Flask:
             f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs[best:best+slice_size] )
             char_range = (add_par(f, best), add_par(t, best))
         elif model_name == "baseline":
-            char_range = ((best_section, 0), (best_section, len(paragraphs[best_section]))
+            char_range = ((best_section, 0), (best_section, len(paragraphs[best_section])))
         else: # if model_name in {"section", "section-mp"}:
             f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], sections[best_section] )
             offs = sum( ( len(sections[s]) for s in range(best_section) ) )
