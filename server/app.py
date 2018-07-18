@@ -162,6 +162,9 @@ def make_app(build_dir: str = None) -> Flask:
         if model_name == "doc":
             bidaf_data['passage'] = " ".join( paragraphs )
         else:
+            if model_name in {"doc-slice", "doc-slice-mp"}:
+                slice_size = req_data.get( "sliceSize", 10 )
+
             if model_name in {"doc-slice", "section"}:
                 tfidf = TfidfVectorizer(strip_accents="unicode", stop_words="english")
 
@@ -171,10 +174,16 @@ def make_app(build_dir: str = None) -> Flask:
                     text_features = tfidf.fit_transform( (" ".join(s) for s in sections) )
 
                 question_features = tfidf.transform([req_data['question']])
-                scores = pairwise_distances(question_features, text_features, "cosine").ravel()
+                scores = -pairwise_distances(question_features, text_features, "cosine").ravel() + 1
 
                 if model_name == "section":
-                    best_section = min( range(len(sections)), key = lambda i: scores[i] )
+                    best_section = max( range(len(sections)), key = lambda i: scores[i] )
+                else: # if model_name == "doc-slice":
+                    slice_scores = [
+                        1 - pairwise_distances(question_features, tfidf.transform([ " ".join(s_texts) ]), "cosine").ravel()[0]
+                        if sum(scores) > 0 else 0
+                            for s_texts, s_scores in window(zip(paragraphs, scores), slice_size)
+                    ]
 
             else: # if model_name in {"doc-slice-mp", "section-mp"}:
                 if model_name == "doc-slice-mp":
@@ -196,9 +205,8 @@ def make_app(build_dir: str = None) -> Flask:
                     scores = mp_scores(mp_results['paragraph_span_start_logits'], mp_results['paragraph_span_end_logits'])
 
             if model_name in {"doc-slice", "doc-slice-mp"}:
-                slice_size = req_data.get( "sliceSize", 10 )
                 if model_name == "doc-slice":
-                    best, scores = max(enumerate(window(scores, slice_size)), key = lambda e: sum( (1-d for d in e[1]) ))
+                    best, scores = max(enumerate(slice_scores), key = lambda e: e[1])
                 else: # if model_name == "doc-slice-mp":
                     best, scores = max(enumerate(window(scores, slice_size)), key = lambda e: sum(e[1]))
                 bidaf_data['passage'] = ' '.join( paragraphs[best:best+slice_size] )
