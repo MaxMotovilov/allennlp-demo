@@ -144,7 +144,7 @@ def make_app(build_dir: str = None) -> Flask:
         if request.method == "OPTIONS":
             return Response(response="", status=200)
 
-        if model_name not in {'doc', 'section', 'doc-slice', 'section-mp', 'doc-slice-mp'}:
+        if model_name not in {'doc', 'section', 'doc-slice', 'section-mp', 'doc-slice-mp', 'baseline'}:
             raise ServerError("unknown predictor: {}".format(model_name), status_code=404)
 
         req_data = request.get_json()
@@ -165,18 +165,18 @@ def make_app(build_dir: str = None) -> Flask:
             if model_name in {"doc-slice", "doc-slice-mp"}:
                 slice_size = req_data.get( "sliceSize", 10 )
 
-            if model_name in {"doc-slice", "section"}:
+            if model_name in {"doc-slice", "section", "baseline"}:
                 tfidf = TfidfVectorizer(strip_accents="unicode", stop_words="english")
 
-                if model_name == "doc-slice":
-                    text_features = tfidf.fit_transform(paragraphs)
-                else: # if model_name == "section":
+                if model_name == "section":
                     text_features = tfidf.fit_transform( (" ".join(s) for s in sections) )
+                else: # if model_name in {"doc-slice", "baseline"}:
+                    text_features = tfidf.fit_transform(paragraphs)
 
                 question_features = tfidf.transform([req_data['question']])
                 scores = -pairwise_distances(question_features, text_features, "cosine").ravel() + 1
 
-                if model_name == "section":
+                if model_name in {"section", "baseline"}:
                     best_section = max( range(len(sections)), key = lambda i: scores[i] )
                 else: # if model_name == "doc-slice":
                     slice_scores = [
@@ -214,26 +214,33 @@ def make_app(build_dir: str = None) -> Flask:
             else: # if model_name in {"section", "section-mp"}:
                 bidaf_data['passage'] = ' '.join( sections[best_section] )
 
-        results = app.predictors['BiDAF'].predict_json( bidaf_data )
+        if model_name != "baseline":
+            results = app.predictors['BiDAF'].predict_json( bidaf_data )
 
-        logger.info("BiDAF prediction: %s", json.dumps({
-            'question': req_data['question'],
-            'span': results['best_span'],
-            'text': results['best_span_str']
-        }))
+            logger.info("BiDAF prediction: %s", json.dumps({
+                'question': req_data['question'],
+                'span': results['best_span'],
+                'text': results['best_span_str']
+            }))
+
+            answer = results['best_span_str']
+        else:
+            answer = paragraphs[best_section]
 
         if model_name == "doc":
             char_range = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs )
         elif model_name in {"doc-slice", "doc-slice-mp"}:
             f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs[best:best+slice_size] )
             char_range = (add_par(f, best), add_par(t, best))
+        elif model_name == "baseline":
+            char_range = ((best_section, 0), (best_section, len(paragraphs[best_section]))
         else: # if model_name in {"section", "section-mp"}:
             f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], sections[best_section] )
             offs = sum( ( len(sections[s]) for s in range(best_section) ) )
             char_range = (add_par(f, offs), add_par(t, offs))
 
         return jsonify({
-            'text': results['best_span_str'],
+            'text': answer,
             'range': char_range
         })
 

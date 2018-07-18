@@ -37,6 +37,10 @@ const modelNotes = {
         <p>The term frequency scores are determined for all overlapping sequences of consecutive paragraphs of certain length within the document and the best matching
            sequence is processed by the pre-trained model to find answer. This yields better accuracy than sectioning and can be speeded up considerably by the
            use of ElasticSearch indexing.</p>
+    ),
+    "baseline": (
+        <p>A paragraph from the text is selected on the basis of its term frequency score alone. This establishes a baseline for evaluation of the deep learning
+           model performance.</p>
     )
 }
 
@@ -161,6 +165,7 @@ class McInput extends React.Component {
                         <option value="doc" key="doc">Document at once (BiDAF)</option>
                         <option value="section" key="section">Pick section (TF/IDF+BiDAF)</option>
                         <option value="doc-slice" key="doc-slice">Pick best slice (TF/IDF+BiDAF)</option>
+                        <option value="doc-slice" key="baseline">Term search baseline (TF/IDF)</option>
                     </select>
                 </div>
 
