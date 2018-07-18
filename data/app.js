@@ -6,10 +6,26 @@ const
 
     {resolve} = require('path'),
     {read, update} = require('./update'),
-    {pathExists, readFile} = require('fs-extra'),
+    {pathExists, readFile, readdir, lstat} = require('fs-extra'),
 
     port = arg( "--port", 3020 ),
-    docpath = resolve( __dirname, arg( "--docs", "../../Alorica/etl" ) );
+    docpath = resolve( __dirname, arg( "--docs", "../../Alorica/etl" ) ),
+    pdfpath = resolve( __dirname, arg( "--pdfs", "../../Alorica/data" ) );
+
+let pdf_subdirs = [ "." ];
+
+readdir(pdfpath)
+    .then(
+        files =>
+            Promise.all( files.map( file => lstat( resolve( pdfpath, file ) ).then( stat => stat.isDirectory() ) ) )
+                   .then( isDir => files.map( (file, i) => isDir[i] && file ).filter( x => x ) )
+    ).then(
+        subdirs => pdf_subdirs = subdirs.concat( "." )
+    ).catch( err => console.error(err) );
+
+app
+    .get( "/pdf/:file", pdfResolver )
+    .use( "/pdf", express.static( pdfpath ) );
 
 app
     .use( express.json() )
@@ -129,5 +145,29 @@ function addQuestions( {params:{doc}, body: questions} ) {
             }
         }
     ).then( all => all[doc] );
+}
+
+function pdfResolver( req, res, next ) {
+    const {file} = req.params;
+
+    Promise.all( pdf_subdirs.map( subdir => pathExists( resolve( pdfpath, subdir, `${file}.pdf` ) ) ) )
+           .then(
+                exists => {
+                    const i = exists.indexOf( true );
+
+                    if( i < 0 ) {
+                        res.writeHead( 404, { 'content-type': 'text/plain' } );
+                        res.end( `${file}.pdf not found` );
+                    } else {
+                        req.url = req.url.replace( /[^\/]+\/?(?=\?|$)/, `${pdf_subdirs[i]}/${file}.pdf` );
+                        next();
+                    }
+                }
+            ).catch(
+                err => {
+                    res.writeHead( 500, { 'content-type': 'text/plain' } );
+                    res.end( err.stack );
+                }
+            );
 }
 
