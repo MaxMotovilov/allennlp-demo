@@ -162,10 +162,10 @@ class McInput extends React.Component {
                     <label>Options</label>
                     <select onChange={this.handleModelChange} value={model} disabled={running}>
                         <option value="">Select MC model...</option>
-                        <option value="doc" key="doc">Document at once (BiDAF)</option>
                         <option value="section" key="section">Pick section (TF/IDF+BiDAF)</option>
                         <option value="doc-slice" key="doc-slice">Pick best slice (TF/IDF+BiDAF)</option>
-                        <option value="doc-slice" key="baseline">Term search baseline (TF/IDF)</option>
+                        <option value="doc" key="doc">Document at once (BiDAF)</option>
+                        <option value="baseline" key="baseline">Term search baseline (TF/IDF)</option>
                     </select>
                 </div>
 
@@ -241,7 +241,7 @@ const McOutput = ({content, prediction, className}) => {
 
 class _McComponent extends React.Component {
 
-    state = { content: [], model: "doc", sliceSize: 10 }
+    state = { content: [], model: "section", sliceSize: 10 }
 
     update( doc ) {
         if( /^\d+$/.test(doc) )
