@@ -17,15 +17,28 @@ import ModelIntro from './ModelIntro'
 const title = "DeepNow - Autonomous QA";
 const description = (
   <span>
-      Autonomous QA answers natural language questions by selecting an answer span within evidence text using AI DeepLearning running on Oracle BareMetal GPUs.
+      Autonomous QA answers natural language questions by selecting an answer span within evidence text using DeepNow AI platform running on Oracle BareMetal GPUs.
       This visualization works with a single specific PDF document; search through the entire document collection will be
       demonstrated by the next PoC.
   </span>
 );
 
+function formatMMSSTTT( t ) {
+    const	ms = t % 1000,
+            s = Math.floor(t/1000),
+            m = Math.floor(s/60);
+
+    const fillz = (what, n) => {
+        const s = "000" + what;
+        return s.substr( s.length - n );
+    }
+
+    return `${m}:${fillz(s%60, 2)}.${fillz(ms, 3)}`;
+}
+
 class McInput extends React.Component {
 
-    state = { questions: [], questionText: "", running: false }
+    state = { questions: [], questionText: "", running: 0 }
 
     update = (doc) => {
         if( /^\d+$/.test(doc) )
@@ -70,14 +83,21 @@ class McInput extends React.Component {
     go = () => {
         this.save();
         this.props.mc.predict( this.state.questionText )
-             .then( () => this.setState({ running: false }) );
-        this.setState({ running: true });
+             .then( () => this.setState({ running: 0 }) );
+        this.setState({ running: +new Date() });
+    }
+
+    componentDidUpdate() {
+        if( this.state.running )
+            setTimeout( () => this.forceUpdate(), 0 );
     }
 
     render() {
 
         const {questions, questionText, running} = this.state;
         const {model} = this.props;
+
+        const waitingFor = (+new Date()) - running;
 
         return (
             <div className="model__content">
@@ -106,7 +126,7 @@ class McInput extends React.Component {
                 </div>
 
                 <div className="form__field form__field--btn">
-                    <Button enabled={!running && /...\?$/.test( questionText )} onClick={this.go}>Answer this!</Button>
+                    <Button enabled={!running && /...\?$/.test( questionText )} onClick={this.go}>{running ? formatMMSSTTT(waitingFor) : "Answer this!"}</Button>
                 </div>
 
                 <div className="form__field">
@@ -116,8 +136,6 @@ class McInput extends React.Component {
                         <option value="doc" key="doc">Document at once (BiDAF)</option>
                         <option value="section" key="section">Pick section (TF/IDF+BiDAF)</option>
                         <option value="doc-slice" key="doc-slice">Pick best slice (TF/IDF+BiDAF)</option>
-                        <option value="section-mp" key="section-mp">Pick section (MP+BiDAF)</option>
-                        <option value="doc-slice-mp" key="doc-slice-mp">Pick best slice (MP+BiDAF)</option>
                     </select>
                 </div>
             </div>
