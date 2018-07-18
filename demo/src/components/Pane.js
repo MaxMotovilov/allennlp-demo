@@ -6,10 +6,18 @@ import React from 'react';
 
 export const PaneRight = ({children}) => (
     <div className="pane__right model__output">
-        <div className="pane__thumb"></div>
         {children}
     </div>
 );
+
+export const PaneSeparator = ({children}) => (
+    <div className="pane__thumb">{children}</div>
+);
+
+export const PaneTab = ({children, selected, onClick}) => (
+    <div className={`pane__tab ${selected ? "selected" : ""}`}><a href="javascript:" onClick={onClick}>{children}</a></div>
+);
+
 
 /*******************************************************************************
   <PaneBottom /> Component

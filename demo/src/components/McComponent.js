@@ -5,7 +5,7 @@ import Collapsible from 'react-collapsible'
 import { get, post } from '../api-config';
 
 import { withRouter } from 'react-router-dom';
-import {PaneLeft, PaneRight} from './Pane'
+import {PaneLeft, PaneRight, PaneSeparator, PaneTab} from './Pane'
 import Button from './Button'
 import ModelIntro from './ModelIntro'
 
@@ -52,6 +52,10 @@ function formatMMSSTTT( t ) {
 
     return `${m}:${fillz(s%60, 2)}.${fillz(ms, 3)}`;
 }
+
+const McPDF = ({doc}) => (
+    <object data={`/pdf/${doc}`} className="pane__pdf" />
+)
 
 class McInput extends React.Component {
 
@@ -236,7 +240,7 @@ class _McComponent extends React.Component {
 
     update( doc ) {
         if( /^\d+$/.test(doc) )
-            get( `/data/${doc}` ).then( content => this.setState({ doc, content, prediction: null }) );
+            get( `/data/${doc}` ).then( content => this.setState({ doc, content, prediction: null, tab: "pdf" }) );
         else
             this.setState({ doc, content: [] });
     }
@@ -246,7 +250,7 @@ class _McComponent extends React.Component {
         this.setState({ prediction: null });
         return post( `/predict/${model}`, {question, doc: content, sliceSize} )
                     .then(
-                        prediction => { console.log( prediction ); this.setState({ prediction }); },
+                        prediction => { console.log( prediction ); this.setState({ prediction, tab: "text" }); },
                         err => console.error( err )
                     );
     }
@@ -261,7 +265,7 @@ class _McComponent extends React.Component {
     }
 
     render() {
-      const {doc, content, model, prediction, sliceSize} = this.state;
+      const {doc, content, model, prediction, sliceSize, tab} = this.state;
 
       return (
        <div className="pane model">
@@ -269,7 +273,17 @@ class _McComponent extends React.Component {
             <McInput mc={this} doc={doc} model={model} sliceSize={sliceSize} />
           </PaneLeft>
           <PaneRight>
-            <McOutput mc={this} doc={doc} content={content} prediction={prediction} />
+            <PaneSeparator>
+                {doc && [
+                    <PaneTab key="pdf" selected={tab==="pdf"} onClick={() => this.setState({tab: "pdf"})}>PDF</PaneTab>,
+                    <PaneTab key="text" selected={tab==="text"} onClick={() => this.setState({tab: "text"})}>Text</PaneTab>
+                ]}
+            </PaneSeparator>
+            {tab==="text" ? (
+                <McOutput mc={this} doc={doc} content={content} prediction={prediction} />
+            ) : (
+                <McPDF doc={doc} />
+            )}
           </PaneRight>
         </div>
       );
