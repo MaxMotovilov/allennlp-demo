@@ -53,8 +53,8 @@ function formatMMSSTTT( t ) {
     return `${m}:${fillz(s%60, 2)}.${fillz(ms, 3)}`;
 }
 
-const McPDF = ({doc}) => (
-    <object data={`/pdf/${doc}`} className="pane__pdf" />
+const McPDF = ({doc, className}) => (
+    <div key="pdf" className={`pane__pdf ${className}`}><object data={`/pdf/${doc}`} className="pane__pdf" /></div>
 )
 
 class McInput extends React.Component {
@@ -191,7 +191,7 @@ const makeHighlight = (text, top) => (
     <span className="passage__answer" ref={top && (elt => elt && elt.scrollIntoView())}>{text}</span>
 );
 
-const McOutput = ({content, prediction}) => {
+const McOutput = ({content, prediction, className}) => {
     let odd = 0;
 
     function highlight( text, n ) {
@@ -217,7 +217,7 @@ const McOutput = ({content, prediction}) => {
     }
 
     return (
-        <div className="pane__text">
+        <div key="text" className={`pane__text ${className}`}>
             {content.map(
                 ({cpar, section}, i) => cpar ? (
                     <p key={i} className={(odd ^= !!section) ? 'pane__odd' : ''}>
@@ -279,11 +279,8 @@ class _McComponent extends React.Component {
                     <PaneTab key="text" selected={tab==="text"} onClick={() => this.setState({tab: "text"})}>Text</PaneTab>
                 ]}
             </PaneSeparator>
-            {tab==="text" ? (
-                <McOutput mc={this} doc={doc} content={content} prediction={prediction} />
-            ) : (
-                <McPDF doc={doc} />
-            )}
+            <McOutput mc={this} doc={doc} content={content} prediction={prediction} className={tab!=="text" ? "hidden" : ""} />
+            <McPDF doc={doc} className={tab!=="pdf" ? "hidden" : ""} />
           </PaneRight>
         </div>
       );

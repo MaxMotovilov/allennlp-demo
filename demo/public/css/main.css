@@ -1026,6 +1026,10 @@ svg {
   }
 }
 
+.hidden {
+	display: none;
+}
+
 .pane-container {
   display: flex;
   height: 100%

@@ -25,7 +25,7 @@ readdir(pdfpath)
 
 app
     .get( "/pdf/:file", pdfResolver )
-    .use( "/pdf", express.static( pdfpath ) );
+    .use( "/pdf", express.static( pdfpath, {maxAge: "1d"} ) );
 
 app
     .use( express.json() )
