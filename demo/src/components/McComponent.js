@@ -23,6 +23,23 @@ const description = (
   </span>
 );
 
+const modelNotes = {
+    doc: (
+        <p>The entire document is processed by a pre-trained machine comprehension model to find the answer. As the model is optimized for text fragments of limited size,
+           this mode works best on smaller documents and may be less accurate or slow on larger ones</p>
+    ),
+    section: (
+        <p>The document is split into sections detected by analysis of the PDF content during the ETL. The section with the best frequency score for the
+           search term is selected and processed by the pre-trained model to find answer. This mode is fast on all documents but may be less accurate
+           due to errors inherent in detecting sessions.</p>
+    ),
+    "doc-slice": (
+        <p>The term frequency scores are determined for all overlapping sequences of consecutive paragraphs of certain length within the document and the best matching
+           sequence is processed by the pre-trained model to find answer. This yields better accuracy than sectioning and can be speeded up considerably by the
+           use of ElasticSearch indexing.</p>
+    )
+}
+
 function formatMMSSTTT( t ) {
     const	ms = t % 1000,
             s = Math.floor(t/1000),
@@ -65,6 +82,10 @@ class McInput extends React.Component {
         this.setState({ questionText: value });
     }
 
+    handleOptionChange = ({target: {value}}) => {
+        this.props.mc.setState({ sliceSize: value });
+    }
+
     handleModelChange = ({target: {value: model}}) => {
         if( model )
             this.props.mc.setState({ model });
@@ -95,7 +116,7 @@ class McInput extends React.Component {
     render() {
 
         const {questions, questionText, running} = this.state;
-        const {model} = this.props;
+        const {model, sliceSize} = this.props;
 
         const waitingFor = (+new Date()) - running;
 
@@ -138,6 +159,20 @@ class McInput extends React.Component {
                         <option value="doc-slice" key="doc-slice">Pick best slice (TF/IDF+BiDAF)</option>
                     </select>
                 </div>
+
+                <div>{modelNotes[model]}</div>
+
+                {model === "doc-slice" ? (
+                    <label>Number of paragraphs in a slice:&nbsp;
+                    <input
+                        readOnly={running}
+                        onChange={this.handleOptionChange}
+                        type="text"
+                        required="true"
+                        value={sliceSize}
+                        placeholder="10"
+                    /></label>
+                ) : null}
             </div>
         );
     }
@@ -197,7 +232,7 @@ const McOutput = ({content, prediction}) => {
 
 class _McComponent extends React.Component {
 
-    state = { content: [], model: "doc" }
+    state = { content: [], model: "doc", sliceSize: 10 }
 
     update( doc ) {
         if( /^\d+$/.test(doc) )
@@ -207,9 +242,9 @@ class _McComponent extends React.Component {
     }
 
     predict = ( question ) => {
-        const {model, content} = this.state;
+        const {model, content, sliceSize} = this.state;
         this.setState({ prediction: null });
-        return post( `/predict/${model}`, {question, doc: content} )
+        return post( `/predict/${model}`, {question, doc: content, sliceSize} )
                     .then(
                         prediction => { console.log( prediction ); this.setState({ prediction }); },
                         err => console.error( err )
@@ -226,12 +261,12 @@ class _McComponent extends React.Component {
     }
 
     render() {
-      const {doc, content, model, prediction} = this.state;
+      const {doc, content, model, prediction, sliceSize} = this.state;
 
       return (
        <div className="pane model">
           <PaneLeft>
-            <McInput mc={this} doc={doc} model={model} />
+            <McInput mc={this} doc={doc} model={model} sliceSize={sliceSize} />
           </PaneLeft>
           <PaneRight>
             <McOutput mc={this} doc={doc} content={content} prediction={prediction} />
