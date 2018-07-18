@@ -527,7 +527,6 @@ form {
 
 .form__instructions select {
   font-size: .8125em;
-  max-width: 11.25em
 }
 
 .form__field {
