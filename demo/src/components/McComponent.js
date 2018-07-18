@@ -14,10 +14,10 @@ import ModelIntro from './ModelIntro'
   <McInput /> Component
 *******************************************************************************/
 
-const title = "Machine Comprehension";
+const title = "DeepNow - Autonomous QA";
 const description = (
   <span>
-      Machine Comprehension (MC) answers natural language questions by selecting an answer span within evidence text.
+      Autonomous QA answers natural language questions by selecting an answer span within evidence text using AI DeepLearning running on Oracle BareMetal GPUs.
       This visualization works with a single specific PDF document; search through the entire document collection will be
       demonstrated by the next PoC.
   </span>

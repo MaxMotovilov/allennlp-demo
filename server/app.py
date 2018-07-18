@@ -273,7 +273,7 @@ def map_span( span, tokens, text ):
         par, f, t = m.next(tokens[i])
         if i==b:
             begin = (par, f)
-        elif i==e:
+        if i==e:
             return begin, (par, t)
 
     raise ServerError( "{} is outside range of tokens".format(e), status_code=500 )

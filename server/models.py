@@ -27,14 +27,14 @@ class DemoModel:
 # have multiple models (for example, a NER tagger and a POS tagger)
 # that have the same ``Predictor`` wrapper. The corresponding model
 # will be served at the `/predict/<name-of-task>` API endpoint.
+#MODELS = {
+#    'MP': DemoModel(
+#        os.path.join( HOME, 'multipara/triviaqa-output/model.tar.gz' ),
+#        'multi-para'
+#   ),
 MODELS = {
     'BiDAF': DemoModel(
-        'https://s3-us-west-2.amazonaws.com/allennlp/models/bidaf-model-2017.09.15-charpad.tar.gz',  # pylint: disable=line-too-long
+        os.path.join( HOME, 'allennlp/frozen/bidaf-model-2017.09.15-charpad.tar.gz' ),
         'machine-comprehension'
-    ),
-
-    'MP': DemoModel(
-        os.path.join( HOME, 'multipara/triviaqa-output/model.tar.gz' ),
-        'multi-para'
     )
 }
