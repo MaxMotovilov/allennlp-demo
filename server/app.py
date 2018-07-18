@@ -182,7 +182,7 @@ def make_app(build_dir: str = None) -> Flask:
                     slice_scores = [
                         1 - pairwise_distances(question_features, tfidf.transform([ " ".join(s_texts) ]), "cosine").ravel()[0]
                         if sum(scores) > 0 else 0
-                            for s_texts, s_scores in window(zip(paragraphs, scores), slice_size)
+                            for s_texts, s_scores in zip(window(paragraphs, slice_size), window(scores, slice_size))
                     ]
 
             else: # if model_name in {"doc-slice-mp", "section-mp"}:
