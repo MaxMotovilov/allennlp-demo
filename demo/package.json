@@ -111,6 +111,16 @@
       "secure": false,
       "changeOrigin": true,
       "logLevel": "info"
+    },
+    "/pdf": {
+      "target": {
+        "host": "localhost",
+        "protocol": "http:",
+        "port": 3020
+      },
+      "secure": false,
+      "changeOrigin": true,
+      "logLevel": "info"
     }
   }
 }
