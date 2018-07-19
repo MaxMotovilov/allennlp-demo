@@ -91,7 +91,7 @@ class McInput extends React.Component {
     }
 
     handleOptionChange = ({target: {value}}) => {
-        this.props.mc.setState({ sliceSize: value });
+        this.props.mc.setState({ sliceSize: parseInt(value) });
     }
 
     handleModelChange = ({target: {value: model}}) => {
@@ -165,7 +165,9 @@ class McInput extends React.Component {
                         <option value="section" key="section">Pick section (TF/IDF+BiDAF)</option>
                         <option value="doc-slice" key="doc-slice">Pick best slice (TF/IDF+BiDAF)</option>
                         <option value="doc" key="doc">Document at once (BiDAF)</option>
-                        <option value="baseline" key="baseline">Term search baseline (TF/IDF)</option>
+						{/[?&]baseline=[^&]/.test( window.location.search ) ? (
+	                        <option value="baseline" key="baseline">Term search baseline (TF/IDF)</option>
+						):null}
                     </select>
                 </div>
 
@@ -241,7 +243,7 @@ const McOutput = ({content, prediction, className}) => {
 
 class _McComponent extends React.Component {
 
-    state = { content: [], model: "section", sliceSize: 10 }
+    state = { content: [], model: "doc-slice", sliceSize: 20 }
 
     update( doc ) {
         if( /^\d+$/.test(doc) )
