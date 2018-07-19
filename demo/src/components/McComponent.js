@@ -165,9 +165,9 @@ class McInput extends React.Component {
                         <option value="section" key="section">Pick section (TF/IDF+BiDAF)</option>
                         <option value="doc-slice" key="doc-slice">Pick best slice (TF/IDF+BiDAF)</option>
                         <option value="doc" key="doc">Document at once (BiDAF)</option>
-						{/[?&]baseline=[^&]/.test( window.location.search ) ? (
-	                        <option value="baseline" key="baseline">Term search baseline (TF/IDF)</option>
-						):null}
+                        {/[?&]baseline=[^&]/.test( window.location.search ) ? (
+                            <option value="baseline" key="baseline">Term search baseline (TF/IDF)</option>
+                        ):null}
                     </select>
                 </div>
 
