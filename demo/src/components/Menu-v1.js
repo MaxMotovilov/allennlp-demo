@@ -40,7 +40,7 @@ class AddDoc extends React.Component {
         if( !input || !input.value )
             this.defocus();
         else
-            post( '/data', [ input.value ] )
+            post( '/data/v1', [ input.value ] )
                 .then(
                     response => {
                         this.props.onOK( response );
@@ -70,7 +70,7 @@ class AddDoc extends React.Component {
 
         if( navigate )
             return (
-                <Redirect to={`/${navigate}`} />
+                <Redirect to={`/v1/${navigate}`} />
             );
 
         return (<span>
