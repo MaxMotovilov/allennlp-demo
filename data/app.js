@@ -6,6 +6,7 @@ const
 
     {resolve} = require('path'),
     {read, update} = require('./update'),
+    {elasticSearch} = require('./search'),
     {pathExists, readFile, readdir, lstat} = require('fs-extra'),
 
     port = arg( "--port", 3020 ),
@@ -41,6 +42,9 @@ app
     .route( "/data/:doc/questions" )
         .get( api( listQuestions ) )
         .post( api( addQuestions ) );
+
+app
+    .get( "/search/:terms(*)", api( elasticSearch ) );
 
 console.log( `Listening on ${port}` );
 app.listen( port );
@@ -170,4 +174,5 @@ function pdfResolver( req, res, next ) {
                 }
             );
 }
+
 
