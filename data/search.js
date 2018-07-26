@@ -4,10 +4,10 @@ const
     es = new Client({ host: "localhost:9200", log: "info" });
 
 exports.elasticSearch =
-    function( {params: {terms}, query: {q, max=5}} ) {
+    function( {params: {terms}, query: {q, max=5, text}} ) {
         return es.search({ index: "alorica", body: Object.assign(
             {
-                _source: false,
+                _source: text ? {includes: [ "cpar" ]} : false,
                 sort: [ "_score" ],
                 size: max,
                 query: {
@@ -35,8 +35,8 @@ exports.elasticSearch =
             ({hits: {total, hits}}) => ({
                 total,
                 results: hits.map(
-                    ({_id, highlight:{cpar}={}}) =>
-                        ({id: _id, highlights: cpar})
+                    ({_id: id, highlight:{cpar: highlights}={}, _source: {cpar: text}={}}) =>
+                        ({id, highlights, text})
                 )
             })
         );
