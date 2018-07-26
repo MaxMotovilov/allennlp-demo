@@ -6,6 +6,7 @@
     "node": ">=8"
   },
   "dependencies": {
+    "elasticsearch": "^15.1.1",
     "express": "^4",
     "fs-extra": "^6"
   },
