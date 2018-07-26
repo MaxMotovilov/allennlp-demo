@@ -87,12 +87,14 @@ class Menu extends React.Component {
     update = docs => this.setState({ docs });
 
     componentWillMount() {
-        get( "/data" ).then( this.update );
+        get( "/data/v1" ).then( this.update );
     }
 
     render() {
-        const {match: {params: {doc}}} = this.props;
+        const {match: {path, params: {doc}}} = this.props;
         const {docs} = this.state;
+
+        const prefix = path.replace( /\/:.*$/, "" );
 
         return (
             <div className="menu">
@@ -103,7 +105,7 @@ class Menu extends React.Component {
                         id => (
                           <li key={id}>
                             <span className={`nav__link ${id === doc ? "nav__link--selected" : ""}`}>
-                              <Link to={`/${id}`}>
+                              <Link to={`${prefix}/${id}`}>
                                 <span>{id}</span>
                               </Link>
                             </span>
@@ -113,11 +115,11 @@ class Menu extends React.Component {
                     <li key="add">
                         <span className={`nav__link ${doc === "add" ? "nav__link--selected" : ""}`}>
                             <Switch>
-                                <Route path="/add" children={
+                                <Route path={`${prefix}/add`} children={
                                     <AddDoc onOK={this.update} />
                                 }/>
                                 <Route children={
-                                    <Link to="/add">
+                                    <Link to={`${prefix}/add`}>
                                         <span>
                                             <AddButton /> Add
                                         </span>

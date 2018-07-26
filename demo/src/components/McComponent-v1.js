@@ -67,7 +67,7 @@ class McInput extends React.Component {
 
     update = (doc) => {
         if( /^\d+$/.test(doc) )
-            get( `/data/${doc}/questions` ).then( questions => this.setState({ questions }) );
+            get( `/data/v1/${doc}/questions` ).then( questions => this.setState({ questions }) );
         else
             this.setState({ questions: [] });
     }
@@ -104,7 +104,7 @@ class McInput extends React.Component {
         const {doc} = this.props;
 
         if( questionText && questions.indexOf(questionText) < 0 )
-            post( `/data/${doc}/questions`, [ questionText ] )
+            post( `/data/v1/${doc}/questions`, [ questionText ] )
                 .then( questions => this.setState({ questions }) );
     }
 
@@ -247,7 +247,7 @@ class _McComponent extends React.Component {
 
     update( doc ) {
         if( /^\d+$/.test(doc) )
-            get( `/data/${doc}` ).then( content => this.setState({ doc, content, prediction: null, tab: "pdf" }) );
+            get( `/data/v1/${doc}` ).then( content => this.setState({ doc, content, prediction: null, tab: "pdf" }) );
         else
             this.setState({ doc, content: [] });
     }

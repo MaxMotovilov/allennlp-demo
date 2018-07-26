@@ -30,16 +30,16 @@ app
 
 app
     .use( express.json() )
-    .route( "/data" )
+    .route( "/data/v1" )
         .get( api( listDocuments ) )
         .post( api( addDocuments ) );
 
 app
-    .route( "/data/:doc" )
+    .route( "/data/v1/:doc" )
         .get( api( readDocument ) );
 
 app
-    .route( "/data/:doc/questions" )
+    .route( "/data/v1/:doc/questions" )
         .get( api( listQuestions ) )
         .post( api( addQuestions ) );
 
