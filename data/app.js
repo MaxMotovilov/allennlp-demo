@@ -44,6 +44,16 @@ app
         .post( api( addQuestions ) );
 
 app
+    .route( "/data/v2" )
+        .get( api( listPages ) )
+        .post( api( addPages ) );
+
+app
+    .route( "/data/v2/:page" )
+        .get( api( getPage ) )
+        .put( api( updatePage ) );
+
+app
     .get( "/search/:terms(*)", api( elasticSearch ) );
 
 console.log( `Listening on ${port}` );
@@ -97,7 +107,7 @@ function listDocuments() {
 }
 
 function addDocuments( {body: docs} ) {
-    console.log( `Adding: ${docs}` );
+    console.log( `Adding documents: ${docs}` );
 
     return Promise
         .all( docs.map( id => pathExists( resolve( docpath, `${id}.l.json` ) ) ) )
@@ -156,7 +166,58 @@ function addQuestions( {params:{doc}, body: questions} ) {
     ).then( ({v1: all}) => all[doc] );
 }
 
+const v2PageList =
+    ({v2}) =>
+        Object.keys( v2 ).reduce(
+            (result, id) => {
+                const {name} = v2[id];
+                result[id] = name;
+                return result
+            }, {}
+        );
+
 function listPages() {
+    console.log( "Listing pages" );
+    return read().then( v2PageList );
+}
+
+function addPages( {body: pages} ) {
+    console.log( `Adding pages: ${pages.map(({name}) => name)}` );
+    return update(
+                ({v2, ...rest}) => ({
+                    ...rest,
+                    v2: pages.reduce(
+                        (result, page) => {
+                            let id = page.name.toLowerCase().replace( /[^a-z0-9]+/g, "-" );
+                            while( id in result )
+                                id = id.replace( /(?:-(\d))?$/, (_, suffix) => `-${1 + parseInt(suffix||0)}` );
+                            result[id] = page;
+                            return result
+                        }, v2
+                    )
+                })
+            ).then( v2PageList );
+}
+
+function getPage( {params: {page}} ) {
+    console.log( `Retrieving page: ${page}` );
+    return read().then(
+                ({v2}) => {
+                    if( !(page in v2) )
+                        throw failure( 404, "Page not found" );
+                    return v2[page]
+                }
+            );
+}
+
+function updatePage( {params: {page}, body: content} ) {
+    console.log( `Updating page: ${page}` );
+    return update(
+                ({v2, ...rest}) => ({
+                    ...rest,
+                    v2: Object.assign( v2, {[page]: content} )
+                })
+            ).then( () => ({}) );
 }
 
 function pdfResolver( req, res, next ) {
