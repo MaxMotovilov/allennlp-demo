@@ -89,9 +89,11 @@ function readJsonLine( path ) {
     return readFile( path ).then( buf => buf.toString("utf8").split( "\n" ).filter( x => x ).map( x => JSON.parse( x ) ) );
 }
 
+const v1DocList = ({v1}) => Object.keys( v1 );
+
 function listDocuments() {
     console.log( "Listing documents" );
-    return read().then( Object.keys );
+    return read().then( v1DocList );
 }
 
 function addDocuments( {body: docs} ) {
@@ -106,14 +108,17 @@ function addDocuments( {body: docs} ) {
                     throw failure( 400, `Missing data files: ${missing}` );
 
                 return update(
-                    all => docs.reduce(
-                        (dict, id) => {
-                            if( !dict[id] )
-                                dict[id] = []
-                            return dict;
-                        }, all
-                    )
-                ).then( Object.keys );
+                    ({v1: all, ...rest}) => ({
+                        ...rest,
+                        v1: docs.reduce(
+                                (dict, id) => {
+                                    if( !dict[id] )
+                                        dict[id] = []
+                                    return dict;
+                                }, all
+                            )
+                    })
+                ).then( v1DocList );
             }
         );
 }
@@ -128,7 +133,7 @@ function readDocument( {params: {doc}} ) {
 function listQuestions( {params:{doc}} ) {
     console.log( `Listing questions for ${doc}` );
     return read().then(
-        all => {
+        ({v1: all}) => {
             if( !all[doc] )
                 throw failure( 404, "No such document" );
             else
@@ -140,15 +145,18 @@ function listQuestions( {params:{doc}} ) {
 function addQuestions( {params:{doc}, body: questions} ) {
     console.log( `Adding questions for ${doc}: ${questions}` );
     return update(
-        all => {
+        ({v1: all, ...rest}) => {
             if( !all[doc] ) {
                 throw failure( 404, "No such document" );
             } else {
                 questions.forEach( q => all[doc].push( q ) );
-                return all;
+                return {v1: all};
             }
         }
-    ).then( all => all[doc] );
+    ).then( ({v1: all}) => all[doc] );
+}
+
+function listPages() {
 }
 
 function pdfResolver( req, res, next ) {

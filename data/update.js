@@ -15,7 +15,7 @@ module.exports.read = () => lock().then( data => (unlock(), data) );
 
 module.exports.update = updater => lock().then( updater ).then( unlock );
 
-pathExists( db ).then( exists => exists || writeJson( db, {} ) );
+pathExists( db ).then( exists => exists || writeJson( db, {v1:{}, v2:{}} ) );
 
 function lock() {
     if( locked ) {
@@ -29,7 +29,7 @@ function lock() {
         );
     } else {
         locked = true;
-        return readJson( db );
+        return readJson( db ).then( content => (content.v1 ? content : { v1: content, v2: {} }) );
     }
 }
 
