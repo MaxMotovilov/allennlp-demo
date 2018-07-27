@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Redirect, Switch } from 'react-router-dom';
 import McComponentV1 from './components/McComponent-v1';
+import McComponentV2 from './components/McComponent-v2';
 import MenuV1 from './components/Menu-v1';
 import MenuV2 from './components/Menu-v2';
 
@@ -21,7 +22,7 @@ const App = () => (
             <Route path="/v1/:doc?" component={MenuV1} />
             <Route path="/v1/:doc?" component={McComponentV1} />
             <Route path="/v2/:page?" component={MenuV2} />
-            { /* <Route path="/v1/:page?" component={McComponent} /> */ }
+            <Route path="/v2/:page?" component={McComponentV2} />
         </div>
     </div>
   </Router>

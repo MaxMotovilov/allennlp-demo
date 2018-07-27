@@ -12,10 +12,12 @@ class ModelIntro extends React.Component {
 
       return (
         <div>
-          <h2>
-            <span>{title}</span>
-          </h2>
-          <p>{description}</p>
+          {title ? (
+              <h2>
+                <span>{title}</span>
+              </h2>
+          ) : null}
+          {description}
         </div>
       );
   }

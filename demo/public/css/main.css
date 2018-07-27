@@ -531,7 +531,8 @@ form {
 
 .form__field {
   -webkit-transition: margin .2s ease;
-  transition: margin .2s ease
+  transition: margin .2s ease;
+  line-height: 300%;
 }
 
 .form__field+.form__field {
@@ -563,6 +564,25 @@ form {
   box-sizing: border-box;
   -webkit-transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .2s ease;
   transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .2s ease
+}
+
+.form__field #input--mc-term {
+	display: inline-block;
+	padding-right: 4em;
+	width: 14em;
+	border-radius: 2em;
+	margin-right: -3.3em;
+}
+
+.form__field a.form__oval_button {
+	display: inline-block;
+	padding: 1ex 1em;
+	margin-right: 1em;
+	background: #2085bc;
+	color: white;
+	font-weight: normal;
+	border-radius: 1.5em;
+	line-height: 125%;
 }
 
 .form__field input[type=text]::-webkit-input-placeholder,
@@ -1142,7 +1162,7 @@ svg {
 
 .pane__tab>a {
 	display: inline-block;
-	transform: rotate(-90deg);
+	transform: rotate(-90deg) translateY(-5px);
 	color: black;
 	text-decoration: none;
 }
