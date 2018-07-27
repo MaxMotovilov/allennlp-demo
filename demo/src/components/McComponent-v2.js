@@ -30,12 +30,17 @@ const
         set of documents interactively before asking the question itself.
       </p>
     ],
-    bottomDescription = (
+    midDescription = (
       <p>
         Type in the search terms, or space-separated phrases; comma or semicolon completes the term and opens a new one. Fragments from the top 5 documents containing
-        words of the question are also shown in the pane at right if the question field is not empty. When satisfied with the selected subset, press the button below.
+        words of the question are also shown in the pane at right if the question field is not empty.
       </p>
-    );
+    ),
+    bottomDescription = (
+      <p>
+        Enter the question in the field above. When satisfied with the selected subset, press button below.
+      </p>
+    )
 
 function formatMMSSTTT( t ) {
     const	ms = t % 1000,
@@ -138,6 +143,8 @@ class McInput extends React.Component {
                     /><a href="javascript:" className="form__oval_button" onClick={this.addTerm}>✔</a>
                 </div>
 
+                <ModelIntro description={midDescription} />
+
                 <div className="form__field">
                     <label htmlFor="#input--mc-question">Question</label>
                     <input
@@ -156,7 +163,6 @@ class McInput extends React.Component {
                 <div className="form__field form__field--btn">
                     <Button enabled={!running && /...\?$/.test( question )} onClick={this.go}>{running ? formatMMSSTTT(waitingFor) : "Answer this!"}</Button>
                 </div>
-
             </div>
         );
     }
