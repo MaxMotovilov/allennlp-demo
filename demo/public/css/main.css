@@ -1198,6 +1198,46 @@ svg {
 	background-color: #fff8f0;
 }
 
+.search__result {
+	margin: 0 1em;
+	padding: 1em;
+}
+
+.search__result:after {
+	content: " ";
+	clear: both;
+}
+
+.search__result p {
+	padding: 0;
+	margin: 0 0 0.5ex 0;
+	font-size: 14px;
+}
+
+.search__result p em {
+	font-style: normal;
+	padding: 0 .5ex;
+	background-color: #2085bc;
+    color: white;
+}
+
+.search__result.selected {
+	background-color: #f6f7fa;
+}
+
+.search__result a.search__oval_button {
+    font-size: 18px;
+    float: right;
+    padding: .5ex 1em;
+    border-radius: 1.2em;
+    border: solid 2px #2085bc;
+}
+
+.search__result.selected a.search__oval_button {
+	background-color: #2085bc;
+    color: white;
+}
+
 .passage.model__content__summary {
   line-height: 1.875em;
   font-size: 1.125em

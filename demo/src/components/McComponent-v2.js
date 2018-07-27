@@ -32,7 +32,7 @@ const
     ],
     midDescription = (
       <p>
-        Type in the search terms, or space-separated phrases; comma or semicolon completes the term and opens a new one. Fragments from the top 5 documents containing
+        Type in the search terms or multi-word phrases; comma or semicolon completes the term and opens a new one. Snippets from the top 5 documents containing
         words of the question are also shown in the pane at right if the question field is not empty.
       </p>
     ),
@@ -56,7 +56,12 @@ function formatMMSSTTT( t ) {
 }
 
 const McPDF = ({doc, className}) => (
-    <div key="pdf" className={`pane__pdf ${className}`}><object data={`/pdf/${doc}`} className="pane__pdf" /></div>
+    <div
+        key="pdf"
+        className={"pane__pdf " + className}
+    >
+        <object data={"/pdf/" + doc} className="pane__pdf" />
+    </div>
 )
 
 const TermButton =
@@ -176,7 +181,7 @@ class McInput extends React.Component {
 const makeHighlight = (text, top) => (
     <span className="passage__answer" ref={top && (elt => elt && elt.scrollIntoView())}>{text}</span>
 );
-
+/*
 const McOutput = ({content, prediction, className}) => {
     let odd = 0;
 
@@ -214,6 +219,31 @@ const McOutput = ({content, prediction, className}) => {
         </div>
     )
 }
+*/
+const McSearch = ({mc, docs, more, expanded}) => {
+
+    const expand = index => mc.setState({ expanded: index, tab: "pdf" });
+
+    return docs.length == 0 ? (
+        <div className="search__result"><p>No search terms were supplied.</p></div>
+    ) : (
+        <Fragment>
+            { docs.map(
+                ({id, highlights}, index) => (
+                    <div key={id} className={"search__result " + (expanded === index ? "selected" : "")}>
+                        <a href="javascript:" onClick={() => expand(index)} className="search__oval_button">{id}</a>
+                        { highlights ? highlights.map( t => (<p dangerouslySetInnerHTML={{__html: t}} />) ) : (
+                            <p>Enter your question to see content snippets</p>
+                        ) }
+                    </div>
+                )
+            ) }
+            { more ? (
+                <div className="search__result">{more} more documents match the filter, consider making your terms more specific</div>
+            ) : null }
+        </Fragment>
+    );
+}
 
 
 /*******************************************************************************
@@ -236,17 +266,31 @@ class _McComponent extends React.Component {
 
     search( withText ) {
         const
-            {terms, question} = this.state,
-            query = stringify({ max: 5, q: question || undefined, text: withText ? 1 : undefined });
+            {terms, question, lastSearchUrl, searching} = this.state,
+            query = stringify({ max: 5, q: question || undefined, text: withText ? 1 : undefined }),
+            url = `/search/${terms.map( t => t.replace( /\s+/g, "+" ) ).join( "/" )}${query && "?"}${query}`;
 
-        if( terms.length )
-            return get( `/search/${terms.map( t => t.replace( /\s+/g, "+" ) ).join( "/" )}${query && "?"}${query}` )
+        if( terms.length && !searching && url != lastSearchUrl ) {
+
+            this.setState({ searching: true });
+
+            return get( url )
                         .then( ({total, results}) =>
-                            this.setState({ more: total - results.length, docs: results })
+                            this.setState({
+                                more: total - results.length,
+                                docs: results,
+                                lastSearchUrl: url,
+                                searching: false
+                            })
                         );
+        }
     }
 
     componentWillMount() {
+        this.search();
+    }
+
+    componentDidUpdate() {
         this.search();
     }
 
@@ -268,8 +312,11 @@ class _McComponent extends React.Component {
                     <PaneTab key="text" selected={tab==="text"} onClick={() => this.setState({tab: "text"})}>Text</PaneTab>
                 ) : null}
             </PaneSeparator>
-            {expanded != null ? (
-                <McPDF doc={docs[expanded].id} className={tab!=="pdf" ? "hidden" : ""} />
+            { tab==="search" ? (
+                <McSearch mc={this} docs={docs} expanded={expanded} more={more} />
+            ) : null }
+            {expanded != null && tab === "pdf" ? (
+                <McPDF doc={docs[expanded].id} />
                 /* <McText doc={docs[expanded]} className={tab!=="text" ? "hidden" : ""} /> */
             ) : null}
           </PaneRight>
@@ -278,8 +325,6 @@ class _McComponent extends React.Component {
 
     }
 }
-
-/* <McSearch mc={this} docs={docs} expanded={expanded} className={tab!=="search" ? "hidden" : ""} /> */
 
 const McComponent = withRouter(_McComponent);
 
