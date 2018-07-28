@@ -220,18 +220,22 @@ const McOutput = ({content, prediction, className}) => {
     )
 }
 */
-const McSearch = ({mc, docs, more, expanded}) => {
+const McSearch = ({mc, docs, more, canAnswer, expanded, prediction}) => {
 
-    const expand = index => mc.setState({ expanded: index, tab: "pdf" });
+    const expandPdf = index => mc.setState({ expanded: index, tab: "pdf" });
+    const expandAnswer = index => mc.setState({ expanded: index });
 
     return docs.length == 0 ? (
-        <div className="search__result"><p>No search terms were supplied.</p></div>
+        <div className="search__result info">No search terms were supplied.</div>
     ) : (
         <Fragment>
             { docs.map(
                 ({id, highlights}, index) => (
                     <div key={id} className={"search__result " + (expanded === index ? "selected" : "")}>
-                        <a href="javascript:" onClick={() => expand(index)} className="search__oval_button">{id}</a>
+                        <a href="javascript:" onClick={() => expandPdf(index)} className={"pdf " + (prediction ? "" : "selected")}>{id}</a>
+                        {canAnswer ? (
+                            <a href="javascript:" onClick={() => expandAnswer(index)} className={prediction ? "selected" : ""}>ANSWER!</a>
+                        ) : null}
                         { highlights ? highlights.map( t => (<p dangerouslySetInnerHTML={{__html: t}} />) ) : (
                             <p>Enter your question to see content snippets</p>
                         ) }
@@ -239,7 +243,7 @@ const McSearch = ({mc, docs, more, expanded}) => {
                 )
             ) }
             { more ? (
-                <div className="search__result">{more} more documents match the filter, consider making your terms more specific</div>
+                <div className="search__result info">{more} more documents match the filter, consider making your terms more specific</div>
             ) : null }
         </Fragment>
     );
@@ -313,7 +317,7 @@ class _McComponent extends React.Component {
                 ) : null}
             </PaneSeparator>
             { tab==="search" ? (
-                <McSearch mc={this} docs={docs} expanded={expanded} more={more} />
+                <McSearch mc={this} docs={docs} expanded={expanded} more={more} canAnswer={/...\?$/.test( question )} />
             ) : null }
             {expanded != null && tab === "pdf" ? (
                 <McPDF doc={docs[expanded].id} />

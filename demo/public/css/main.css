@@ -1162,7 +1162,7 @@ svg {
 
 .pane__tab>a {
 	display: inline-block;
-	transform: rotate(-90deg) translateY(-5px);
+	transform: translateX(-5px) rotate(-90deg);
 	color: black;
 	text-decoration: none;
 }
@@ -1201,6 +1201,11 @@ svg {
 .search__result {
 	margin: 0 1em;
 	padding: 1em;
+    border-bottom: 1px solid #2085bc;
+}
+
+.search__result.info {
+	border: none;
 }
 
 .search__result:after {
@@ -1225,17 +1230,33 @@ svg {
 	background-color: #f6f7fa;
 }
 
-.search__result a.search__oval_button {
+.search__result a {
     font-size: 18px;
     float: right;
-    padding: .5ex 1em;
-    border-radius: 1.2em;
-    border: solid 2px #2085bc;
+	margin: -0.9em -0.9em 0.7em 0;
+    padding: 1ex 1em;
+    border-bottom-right-radius: 1ex;
+    border: solid 1px #2085bc;
+	border-top: none;
+	width: 4em;
+	text-align: right;
+	clear: right;
 }
 
-.search__result.selected a.search__oval_button {
+.search__result a.pdf {
+	background-image: url(../assets/pdf-blue.png);
+	background-repeat: no-repeat;
+	background-position: 0.5em 1ex;
+}
+
+.search__result.selected a.selected {
 	background-color: #2085bc;
     color: white;
+}
+
+.search__result.selected a.pdf.selected {
+	background-image: url(../assets/pdf-white.png);
+	background-repeat: no-repeat;
 }
 
 .passage.model__content__summary {
