@@ -33,14 +33,9 @@ const
     midDescription = (
       <p>
         Type in the search terms or multi-word phrases; comma or semicolon completes the term and opens a new one. Snippets from the top 5 documents containing
-        words of the question are also shown in the pane at right if the question field is not empty.
+        search terms and the words of the question are shown in the pane at right.
       </p>
-    ),
-    bottomDescription = (
-      <p>
-        Enter the question in the field above. When satisfied with the selected subset, press button below.
-      </p>
-    )
+    );
 
 function formatMMSSTTT( t ) {
     const	ms = t % 1000,
@@ -80,7 +75,7 @@ const TermButton =
 
 class McInput extends React.Component {
 
-    state = { running: 0, newTerm: "" }
+    state = { newTerm: "" }
 
     handleQuestionChange = ({target: {value}}) => {
         this.props.mc.setState({ question: value });
@@ -92,13 +87,6 @@ class McInput extends React.Component {
             this.addTerm();
         else
             this.setState({newTerm});
-    }
-
-    go = () => {/*
-        this.props.mc.predict()
-             .then( () => this.setState({ running: 0 }) );
-        this.setState({ running: +new Date() });
-    */
     }
 
     keyUp = ({keyCode}) => {
@@ -118,17 +106,10 @@ class McInput extends React.Component {
         }
     }
 
-    componentDidUpdate() {
-        if( this.state.running )
-            setTimeout( () => this.forceUpdate(), 0 );
-    }
-
     render() {
 
-        const {running, newTerm} = this.state;
+        const {newTerm} = this.state;
         const {question, terms, mc} = this.props;
-
-        const waitingFor = (+new Date()) - running;
 
         return (
             <div className="model__content">
@@ -136,9 +117,8 @@ class McInput extends React.Component {
 
                 <div className="form__field">
                     <label htmlFor="#input--mc-term">Filter by</label>
-                    { terms.map( (term, i) => (<TermButton disabled={running} mc={mc} index={i} key={i}>{term}</TermButton>) ) }
+                    { terms.map( (term, i) => (<TermButton mc={mc} index={i} key={i}>{term}</TermButton>) ) }
                     <input
-                        readOnly={running}
                         onChange={this.handleTermChange}
                         onKeyUp={this.keyUp}
                         id="input--mc-term"
@@ -153,7 +133,6 @@ class McInput extends React.Component {
                 <div className="form__field">
                     <label htmlFor="#input--mc-question">Question</label>
                     <input
-                        readOnly={running}
                         onChange={this.handleQuestionChange}
                         id="input--mc-question"
                         type="text"
@@ -161,12 +140,6 @@ class McInput extends React.Component {
                         value={question}
                         placeholder="E.g. &quot;How do I get the boot menu?&quot;"
                     />
-                </div>
-
-                <ModelIntro description={bottomDescription} />
-
-                <div className="form__field form__field--btn">
-                    <Button enabled={!running && /...\?$/.test( question )} onClick={this.go}>{running ? formatMMSSTTT(waitingFor) : "Answer this!"}</Button>
                 </div>
             </div>
         );
@@ -181,12 +154,10 @@ class McInput extends React.Component {
 const makeHighlight = (text, top) => (
     <span className="passage__answer" ref={top && (elt => elt && elt.scrollIntoView())}>{text}</span>
 );
-/*
-const McOutput = ({content, prediction, className}) => {
-    let odd = 0;
 
+const highlightAnswer = (text, prediction, offset=0) => {
     function highlight( text, n ) {
-        const {range: [[begin, beginPos], [end, endPos]]}	 = prediction;
+        const {range: [[begin, beginPos], [end, endPos]]} = prediction;
         return n < begin || n > end ? text :
                 begin == end ? (
                     <Fragment>
@@ -207,38 +178,69 @@ const McOutput = ({content, prediction, className}) => {
                 ) : makeHighlight(text);
     }
 
-    return (
-        <div key="text" className={`pane__text ${className}`}>
-            {content.map(
-                ({cpar, section}, i) => cpar ? (
-                    <p key={i} className={(odd ^= !!section) ? 'pane__odd' : ''}>
-                        {prediction ? highlight(cpar, i) : cpar}
+    return text.map(
+                (t, i) => t ? (
+                    <p key={i + offset}>
+                        {prediction ? highlight(t, i + offset) : t}
                     </p>
                 ) : null
-            )}
-        </div>
-    )
+            );
 }
-*/
-const McSearch = ({mc, docs, more, canAnswer, expanded, prediction}) => {
+
+const McText = ({doc: {text, prediction}, className}) => (
+    <div key="text" className={"pane__text " + className}>
+        {highlightAnswer( text, prediction )}
+    </div>
+);
+
+const
+    MAX_LINES_IN_SNIPPET = 5,
+    MAX_CHARS_IN_SNIPPET = 500;
+
+const McAnswerSnippet = ({ text, prediction }) => {
+    let
+        {range: [[begin], [end]]} = prediction,
+        lines = end - begin + 1,
+        chars = text.slice( begin, end+1 ).reduce( (n, t) => n + t.length, 0 ),
+        atStart = 0, atEnd = 0;
+
+    while( lines < MAX_LINES_IN_SNIPPET && chars < MAX_CHARS_IN_SNIPPET ) {
+        if( atEnd <= atStart && end < text.length ) {
+            ++lines;
+            ++atEnd;
+            chars += text[++end].length;
+        } else if( atStart < atEnd && begin > 0 ) {
+            ++lines;
+            ++atStart;
+            chars += text[--begin].length;
+        } else {
+            break;
+        }
+    }
+
+    return (<Fragment>{highlightAnswer(text.slice(begin, end), prediction, begin)}</Fragment>);
+}
+
+const McSearch = ({mc, docs, more, canAnswer, expanded}) => {
 
     const expandPdf = index => mc.setState({ expanded: index, tab: "pdf" });
-    const expandAnswer = index => mc.setState({ expanded: index });
 
     return docs.length == 0 ? (
         <div className="search__result info">No search terms were supplied.</div>
     ) : (
         <Fragment>
             { docs.map(
-                ({id, highlights}, index) => (
+                ({id, highlights, prediction, text}, index) => (
                     <div key={id} className={"search__result " + (expanded === index ? "selected" : "")}>
                         <a href="javascript:" onClick={() => expandPdf(index)} className={"pdf " + (prediction ? "" : "selected")}>{id}</a>
                         {canAnswer ? (
-                            <a href="javascript:" onClick={() => expandAnswer(index)} className={prediction ? "selected" : ""}>ANSWER!</a>
+                            <a href="javascript:" onClick={() => mc.predict(index)} className={prediction ? "selected" : ""}>ANSWER{prediction ? "!" : "?"}</a>
                         ) : null}
-                        { highlights ? highlights.map( t => (<p dangerouslySetInnerHTML={{__html: t}} />) ) : (
-                            <p>Enter your question to see content snippets</p>
-                        ) }
+                        { prediction ?
+                            ( <McAnswerSnippet text={text} prediction={prediction} /> )
+                          : highlights ?
+                            highlights.map( t => (<p dangerouslySetInnerHTML={{__html: t}} />) )
+                          : ( <p>Enter your question to see content snippets</p> ) }
                     </div>
                 )
             ) }
@@ -249,43 +251,124 @@ const McSearch = ({mc, docs, more, canAnswer, expanded, prediction}) => {
     );
 }
 
+class McWait extends React.Component {
+    componentDidUpdate() {
+        if( this.props.running )
+            setTimeout( () => this.forceUpdate(), 0 );
+    }
+
+    render() {
+        const {running} = this.props;
+        const waitingFor = (+new Date()) - running;
+
+        return running ? (
+            <div className="pane__wait"><div>{formatMMSSTTT(waitingFor)}</div></div>
+        ) : null;
+    }
+}
 
 /*******************************************************************************
   <McComponent /> Component
 *******************************************************************************/
 
+const TARGET_BYTE_COUNT = 4096;
+
+function windowSizes(text) {
+    const counts = [], last = [];
+    let weight = 0;
+
+    text.forEach(
+        par => {
+            if( last.length == 0 ) {
+                last.push( par.length );
+                weight += par.length;
+            } else {
+                last.push( par.length );
+                weight += 1 + par.length;
+                if( weight + 1 + par.length > TARGET_BYTE_COUNT ) {
+                    counts.push( last.length - 1 );
+                    while( last.length > 1 && weight > TARGET_BYTE_COUNT )
+                        weight -= 1 + last.shift();
+                }
+            }
+        }
+    );
+
+    if( last.length > 0 )
+        counts.push( last.length );
+
+    return counts
+}
+
+function topQuintile( lengths ) {
+    const pos = Math.floor( lengths.length * 0.8 );
+    return lengths.sort()[pos]
+}
+
 class _McComponent extends React.Component {
 
     state = { terms: [], question: "", docs: [], more: null, tab: "search" }
 
-    predict = ( question ) => {
-        const {model, content, sliceSize} = this.state;
-        this.setState({ prediction: null });
-        return post( `/predict/doc-slice`, {question, doc: content, sliceSize: 20} )
-                    .then(
-                        prediction => { console.log( prediction ); this.setState({ prediction, tab: "text" }); },
-                        err => console.error( err )
-                    );
+    predict( index ) {
+        const {question, docs} = this.state;
+
+        this.setState({ running: +new Date() });
+
+        const go = (docs) => {
+            const
+                {text} = docs[index],
+                sizes = windowSizes(text),
+                sliceSize = sizes.length > 1 && topQuintile( sizes ) || undefined;
+
+            return post( `/predict/${sliceSize?"doc-slice":"doc"}`, {question, doc: text.map( t => ({cpar: t}) ), sliceSize} )
+                        .then(
+                            prediction => {
+                                console.log( prediction );
+                                this.setState({
+                                    docs: docs.map(
+                                        (doc, i) => index === i ? {...doc, prediction} : doc
+                                    ),
+                                    running: null,
+                                    tab: "text",
+                                    expanded: index
+                                });
+                            },
+                            err => console.error( err )
+                        );
+        }
+
+        if( docs[index].text )
+            go(docs);
+        else
+            this.search( true ).then( go );
+    }
+
+    canAnswer() {
+        return /...\?$/.test( this.state.question )
     }
 
     search( withText ) {
         const
             {terms, question, lastSearchUrl, searching} = this.state,
-            query = stringify({ max: 5, q: question || undefined, text: withText ? 1 : undefined }),
+            query = stringify({ max: 5, q: this.canAnswer() && question || undefined, text: withText ? 1 : undefined }),
             url = `/search/${terms.map( t => t.replace( /\s+/g, "+" ) ).join( "/" )}${query && "?"}${query}`;
 
-        if( terms.length && !searching && url != lastSearchUrl ) {
-
+        if( terms.length && !searching && url != lastSearchUrl
+            && (!lastSearchUrl || url != lastSearchUrl.replace( /(&?)withText=1(&?)/, (_,a,b) => (a+b).substr(1) ))
+        ) {
             this.setState({ searching: true });
 
             return get( url )
-                        .then( ({total, results}) =>
-                            this.setState({
-                                more: total - results.length,
-                                docs: results,
-                                lastSearchUrl: url,
-                                searching: false
-                            })
+                        .then(
+                            ({total, results}) => {
+                                this.setState({
+                                    more: total - results.length,
+                                    docs: results,
+                                    lastSearchUrl: url,
+                                    searching: false
+                                });
+                                return results
+                            }
                         );
         }
     }
@@ -299,10 +382,11 @@ class _McComponent extends React.Component {
     }
 
     render() {
-      const {terms, docs, question, more, tab, expanded} = this.state;
+      const {terms, docs, question, more, tab, expanded, running} = this.state;
 
       return (
        <div className="pane model">
+          <McWait running={running} />
           <PaneLeft>
             <McInput mc={this} terms={terms} question={question} />
           </PaneLeft>
@@ -313,15 +397,17 @@ class _McComponent extends React.Component {
                     <PaneTab key="pdf" selected={tab==="pdf"} onClick={() => this.setState({tab: "pdf"})}>PDF</PaneTab>
                 ) : null}
                 {expanded != null && docs[expanded].prediction ? (
-                    <PaneTab key="text" selected={tab==="text"} onClick={() => this.setState({tab: "text"})}>Text</PaneTab>
+                    <PaneTab key="text" selected={tab==="text"} onClick={() => this.setState({tab: "text"})}>Answer</PaneTab>
                 ) : null}
             </PaneSeparator>
             { tab==="search" ? (
-                <McSearch mc={this} docs={docs} expanded={expanded} more={more} canAnswer={/...\?$/.test( question )} />
+                <McSearch mc={this} docs={docs} expanded={expanded} more={more} canAnswer={this.canAnswer()} />
             ) : null }
             {expanded != null && tab === "pdf" ? (
                 <McPDF doc={docs[expanded].id} />
-                /* <McText doc={docs[expanded]} className={tab!=="text" ? "hidden" : ""} /> */
+            ) : null}
+            {expanded != null && tab === "text" ? (
+                <McText doc={docs[expanded]} />
             ) : null}
           </PaneRight>
         </div>

@@ -1151,10 +1151,10 @@ svg {
 
 .pane__tab {
 	height: 3em;
-	width: 1.5em;
+	width: 1.5ex;
 	background-color: #e1e5ea;
 	margin: 0.5ex 0 -1ex -1em;
-	padding-top: 1.5em;
+	padding: 1.5em 0 0 1.5ex;
 	border-top-left-radius: 1ex;
 	border-top: solid 1px #f0f2ff;
 	border-left: solid 1px #f0f2ff;
@@ -1162,7 +1162,7 @@ svg {
 
 .pane__tab>a {
 	display: inline-block;
-	transform: translateX(-5px) rotate(-90deg);
+	transform: translateX(-50%) rotate(-90deg);
 	color: black;
 	text-decoration: none;
 }
@@ -1180,6 +1180,30 @@ svg {
   width: .25em;
   background: #e1e5ea;
   left: .5em
+}
+
+.pane__wait {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	left: 0;
+	top: 0;
+	z-index: 2;
+	background-color: #c7c19d88;
+}
+
+.pane__wait div {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 12em;
+	height: 2.5em;
+	margin: -2em -6em;
+	background-color: #2085bc;
+	text-align: center;
+	padding-top: 1em;
+	font-size: 24px;
+	color: white;
 }
 
 .pane__text {
