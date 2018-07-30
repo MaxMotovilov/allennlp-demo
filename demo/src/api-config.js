@@ -31,3 +31,14 @@ export function post( url, data ) {
                 body: JSON.stringify( data )
             }) );
 }
+
+export function put( url, data ) {
+    return process( fetch( API_ROOT + url, {
+                method: 'PUT',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify( data )
+            }) );
+}

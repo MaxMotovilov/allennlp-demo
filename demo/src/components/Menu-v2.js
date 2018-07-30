@@ -36,11 +36,12 @@ class SaveAsButton extends React.Component {
 
     save = () => {
         const {input} = this;
+        const {location: {state}} = this.props;
 
         if( !input || !input.value )
             this.defocus();
         else
-            post( '/data/v2',  [ {name: input.value /* rest of page state */} ] )
+            post( '/data/v2',  [ {name: input.value, ...state} ] )
                 .then(
                     response => {
                         this.props.onOK( response );
@@ -124,11 +125,13 @@ class Menu extends React.Component {
                     <li key="save">
                         <span className={`nav__link ${page === "save" ? "nav__link--selected" : ""}`}>
                             <Switch>
-                                <Route path={`${prefix}/save`} children={
-                                    <SaveAsButton onOK={this.update} />
+                                <Route path={`${prefix}/save`} render={
+                                    ({location}) => (
+                                        <SaveAsButton onOK={this.update} location={location} />
+                                    )
                                 }/>
                                 <Route children={
-                                    <Link to={`${prefix}/save`}>
+                                    <Link to={{pathname: `${prefix}/save`, state: {}}}>
                                         <span>
                                             <AddButton /> Save As...
                                         </span>

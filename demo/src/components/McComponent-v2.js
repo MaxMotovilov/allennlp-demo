@@ -2,7 +2,7 @@ import React, {Fragment} from 'react';
 
 import { stringify } from 'query-string';
 
-import { get, post } from '../api-config';
+import { get, put, post } from '../api-config';
 
 import { withRouter } from 'react-router-dom';
 import {PaneLeft, PaneRight, PaneSeparator, PaneTab} from './Pane'
@@ -373,12 +373,42 @@ class _McComponent extends React.Component {
         }
     }
 
+    load( page ) {
+        get( `/data/v2/${page}` )
+            .then( content => this.setState( content ) );
+    }
+
+    save( page, data ) {
+        put( `/data/v2/${page}`, data );
+    }
+
     componentWillMount() {
-        this.search();
+        const {match: {params: {page}}} = this.props;
+        if( !(page in {save: 1, new: 1}) )
+            this.load( page );
+    }
+
+    componentWillReceiveProps({match: {params: {page}}}) {
+        const {match: {params: {page: currentPage}}} = this.props;
+        if( page !== currentPage && !(page in {save: 1, new: 1}) )
+            this.load( page );
+    }
+
+    componentWillUpdate({location: {state}}, {terms, question}) {
+        if( state ) {
+            state.terms = terms;
+            state.question = question;
+        }
     }
 
     componentDidUpdate() {
-        this.search();
+        const {match: {params: {page}}} = this.props;
+        const {terms, question} = this.state;
+
+        const searched = this.search();
+
+        if( searched )
+            searched.then( () => this.save( page, {terms, question} ) );
     }
 
     render() {

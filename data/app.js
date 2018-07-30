@@ -215,7 +215,7 @@ function updatePage( {params: {page}, body: content} ) {
     return update(
                 ({v2, ...rest}) => ({
                     ...rest,
-                    v2: Object.assign( v2, {[page]: content} )
+                    v2: Object.assign( v2, {[page]: {...v2[page], ...content}} )
                 })
             ).then( () => ({}) );
 }
