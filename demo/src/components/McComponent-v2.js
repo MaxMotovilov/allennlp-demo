@@ -375,7 +375,7 @@ class _McComponent extends React.Component {
 
     load( page ) {
         get( `/data/v2/${page}` )
-            .then( content => this.setState( {...content, docs: [], expanded: null, tab: "search"} ) );
+            .then( content => this.setState( {...content, docs: [], expanded: null, tab: "search", lastSearchUrl: null} ) );
     }
 
     save( page, data ) {
