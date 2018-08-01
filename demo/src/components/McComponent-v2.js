@@ -106,10 +106,20 @@ class McInput extends React.Component {
         }
     }
 
+    handleOptionChange = ({target: {value}}) => {
+        const {mc, model} = this.props;
+        mc.setState( ({sliceSizes, ...rest}) => ({...rest, sliceSizes: {...sliceSizes, [model]: parseInt(value) }}) );
+    }
+
+    handleModelChange = ({target: {value: model}}) => {
+        if( model )
+            this.props.mc.setState({ model });
+    }
+
     render() {
 
         const {newTerm} = this.state;
-        const {question, terms, mc} = this.props;
+        const {question, terms, mc, model, sliceSizes} = this.props;
 
         return (
             <div className="model__content">
@@ -141,6 +151,27 @@ class McInput extends React.Component {
                         placeholder="E.g. &quot;How do I get the boot menu?&quot;"
                     />
                 </div>
+
+                <div className="form__field">
+                    <label>Options</label>
+                    <select onChange={this.handleModelChange} value={model}>
+                        <option value="auto" key="auto">Slice based on character count</option>
+                        <option value="doc-slice" key="doc-slice">Slice based on paragraph count</option>
+                        <option value="doc" key="doc">Force document at once</option>
+                    </select>
+
+                    {model in sliceSizes ? (<Fragment>
+                        <input
+                            className="form__option"
+                            onChange={this.handleOptionChange}
+                            type="text"
+                            required="true"
+                            value={sliceSizes[model]}
+                        />
+                        <span> {model == "auto" ? "characters" : "paragraphs"} in a slice</span>
+                    </Fragment>) : null}
+                </div>
+
             </div>
         );
     }
@@ -272,77 +303,19 @@ class McWait extends React.Component {
   <McComponent /> Component
 *******************************************************************************/
 
-const TARGET_BYTE_COUNT = 4096;
-
-function windowSizes(text) {
-    const counts = [], last = [];
-    let weight = 0;
-
-    text.forEach(
-        par => {
-            if( last.length == 0 ) {
-                last.push( par.length );
-                weight += par.length;
-            } else {
-                last.push( par.length );
-                weight += 1 + par.length;
-                if( weight + 1 + par.length > TARGET_BYTE_COUNT ) {
-                    counts.push( last.length - 1 );
-                    while( last.length > 1 && weight > TARGET_BYTE_COUNT )
-                        weight -= 1 + last.shift();
-                }
-            }
-        }
-    );
-
-    if( last.length > 0 )
-        counts.push( last.length );
-
-    return counts
-}
-
-function topQuintile( lengths ) {
-    const pos = Math.floor( lengths.length * 0.8 );
-    return lengths.sort()[pos]
-}
-
 class _McComponent extends React.Component {
 
-    state = { terms: [], question: "", docs: [], more: null, tab: "search" }
+    state = { terms: [], question: "", docs: [], more: null, tab: "search", model: "auto", sliceSizes: { auto: 4096, "doc-slice": 50 } }
 
     predict( index ) {
-        const {question, docs} = this.state;
+        const {question, docs, model, sliceSizes} = this.state;
 
         this.setState({ running: +new Date() });
 
         const go = (docs) => {
-            const
-                {text} = docs[index],
-                sizes = windowSizes(text),
-                sliceSize = sizes.length > 1 && topQuintile( sizes ) || undefined;
+            const {text} = docs[index];
 
-            return post( `/predict/${sliceSize?"doc-slice":"doc"}`, {question, doc: text.map( t => ({cpar: t}) ), sliceSize} )
-                        .then(
-                            prediction => {
-                                console.log( prediction );
-                                this.setState({
-                                    docs: docs.map(
-                                        (doc, i) => index === i ? {...doc, prediction} : doc
-                                    ),
-                                    running: null,
-                                    tab: "text",
-                                    expanded: index
-                                });
-                            },
-                            err => console.error( err )
-                        );
-        }
-/*
-        const go = (docs) => {
-            const
-                {text} = docs[index];
-
-            return post( "/predict/auto", {question, doc: text.map( t => ({cpar: t}) )} )
+            return post( `/predict/${model}`, {question, doc: text.map( t => ({cpar: t}) ), sliceSize: sliceSizes[model]} )
                         .then(
                             prediction => {
                                 console.log( prediction );
@@ -363,7 +336,7 @@ class _McComponent extends React.Component {
                             }
                         );
         }
-*/
+
         if( docs[index].text )
             go(docs);
         else
@@ -411,13 +384,13 @@ class _McComponent extends React.Component {
 
     componentWillMount() {
         const {match: {params: {page}}} = this.props;
-        if( !(page in {save: 1, new: 1}) )
+        if( page && !(page in {save: 1, new: 1}) )
             this.load( page );
     }
 
     componentWillReceiveProps({match: {params: {page}}}) {
         const {match: {params: {page: currentPage}}} = this.props;
-        if( page !== currentPage && !(page in {save: 1, new: 1}) )
+        if( page && page !== currentPage && !(page in {save: 1, new: 1}) )
             this.load( page );
     }
 
@@ -430,22 +403,22 @@ class _McComponent extends React.Component {
 
     componentDidUpdate() {
         const {match: {params: {page}}} = this.props;
-        const {terms, question} = this.state;
+        const {terms, question, model, sliceSizes} = this.state;
 
         const searched = this.search();
 
         if( searched && !(page in {save: 1, new: 1}) )
-            searched.then( () => this.save( page, {terms, question} ) );
+            searched.then( () => this.save( page, {terms, question, model, sliceSizes} ) );
     }
 
     render() {
-      const {terms, docs, question, more, tab, expanded, running} = this.state;
+      const {terms, docs, question, more, tab, expanded, running, model, sliceSizes} = this.state;
 
       return (
        <div className="pane model">
           <McWait running={running} />
           <PaneLeft>
-            <McInput mc={this} terms={terms} question={question} />
+            <McInput mc={this} terms={terms} question={question} model={model} sliceSizes={sliceSizes} />
           </PaneLeft>
           <PaneRight>
             <PaneSeparator>

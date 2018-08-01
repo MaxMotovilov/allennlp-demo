@@ -212,7 +212,6 @@ def make_app(build_dir: str = None) -> Flask:
                     ]
                 else: # if model_name == "auto":
                     slices = list( sizeWindow(paragraphs, slice_size) )
-                    logger.info( "Slices: %s", slices )
                     slice_scores = [
                         1 - pairwise_distances(question_features, tfidf.transform([ " ".join(paragraphs[start:end]) ]), "cosine").ravel()[0]
                         if sum(scores[start:end]) > 0 else 0

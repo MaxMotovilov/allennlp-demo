@@ -566,6 +566,17 @@ form {
   transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .2s ease
 }
 
+.form__field select {
+	padding: .8125em 1.125em;
+ 	border: .125em solid #d4dce2;
+}
+
+.form__field input[type=text].form__option {
+	display: inline-block;
+	margin: 0 1em;
+	width: 5em;
+}
+
 .form__field #input--mc-term {
 	display: inline-block;
 	padding-right: 4em;
