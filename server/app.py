@@ -187,7 +187,7 @@ def make_app(build_dir: str = None) -> Flask:
             if model_name in {"doc-slice", "doc-slice-mp"}:
                 slice_size = req_data.get( "sliceSize", 10 ) # in paragraphs
             elif model_name == "auto":
-                slice_size = req_date.get( "sliceSize", 4096 ) # in characters
+                slice_size = req_data.get( "sliceSize", 4096 ) # in characters
 
             if model_name in {"auto", "doc-slice", "section", "baseline"}:
                 tfidf = TfidfVectorizer(strip_accents="unicode", stop_words="english")
@@ -250,7 +250,7 @@ def make_app(build_dir: str = None) -> Flask:
                 else: # if model_name in {"doc-slice", "doc-slice-mp"}:
                     bidaf_data['passage'] = ' '.join( paragraphs[best:best+slice_size] )
 
-            logger.info("Best slice at %d: %s", best, scores)
+                logger.info("Best slice at %d: %s", best, scores)
             elif model_name in {"section", "section-mp"}:
                 bidaf_data['passage'] = ' '.join( sections[best_section] )
 
