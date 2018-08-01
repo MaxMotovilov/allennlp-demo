@@ -101,6 +101,28 @@ def window(seq, n=2):
         result = result[1:] + (elem,)
         yield result
 
+def sizeWindow(seq, size):
+    it = iter(seq)
+    start = 0
+    end = 0
+    w = []
+    last_returned = 0
+    weight = 0
+    for next in it:
+        weight += len(next) + (1 if weight>0 else 0)
+        w.append( len(next) )
+        end += 1
+        if weight >= size:
+            yield (start, end)
+            last_returned = end
+            while weight >= size/2:
+                weight -= w.pop(0)
+                start += 1
+                if start < end:
+                    weight -= 1
+    if end > last_returned:
+        yield (start, end)
+
 def make_app(build_dir: str = None) -> Flask:
     if build_dir is None:
         build_dir = os.path.join(DEMO_DIR, 'build')
@@ -144,7 +166,7 @@ def make_app(build_dir: str = None) -> Flask:
         if request.method == "OPTIONS":
             return Response(response="", status=200)
 
-        if model_name not in {'doc', 'section', 'doc-slice', 'section-mp', 'doc-slice-mp', 'baseline'}:
+        if model_name not in {'auto', 'doc', 'section', 'doc-slice', 'section-mp', 'doc-slice-mp', 'baseline'}:
             raise ServerError("unknown predictor: {}".format(model_name), status_code=404)
 
         req_data = request.get_json()
@@ -153,7 +175,7 @@ def make_app(build_dir: str = None) -> Flask:
             'question': req_data['question']
         }
 
-        if model_name in {"doc", "doc-slice", "doc-slice-mp", "baseline"}:
+        if model_name in {"auto", "doc", "doc-slice", "doc-slice-mp", "baseline"}:
             paragraphs = [p['cpar'] for p in req_data['doc']]
         else:
             next = Next(0)
@@ -163,14 +185,16 @@ def make_app(build_dir: str = None) -> Flask:
             bidaf_data['passage'] = " ".join( paragraphs )
         else:
             if model_name in {"doc-slice", "doc-slice-mp"}:
-                slice_size = req_data.get( "sliceSize", 10 )
+                slice_size = req_data.get( "sliceSize", 10 ) # in paragraphs
+            elif model_name == "auto":
+                slice_size = req_date.get( "sliceSize", 4096 ) # in characters
 
-            if model_name in {"doc-slice", "section", "baseline"}:
+            if model_name in {"auto", "doc-slice", "section", "baseline"}:
                 tfidf = TfidfVectorizer(strip_accents="unicode", stop_words="english")
 
                 if model_name == "section":
                     text_features = tfidf.fit_transform( (" ".join(s) for s in sections) )
-                else: # if model_name in {"doc-slice", "baseline"}:
+                else: # if model_name in {"auto", "doc-slice", "baseline"}:
                     text_features = tfidf.fit_transform(paragraphs)
 
                 question_features = tfidf.transform([req_data['question']])
@@ -180,11 +204,19 @@ def make_app(build_dir: str = None) -> Flask:
                     best_section = max( range(len(sections)), key = lambda i: scores[i] )
                 elif model_name == "baseline":
                     best_section = max( range(len(paragraphs)), key = lambda i: scores[i] )
-                else: # if model_name == "doc-slice":
+                elif model_name == "doc-slice":
                     slice_scores = [
                         1 - pairwise_distances(question_features, tfidf.transform([ " ".join(s_texts) ]), "cosine").ravel()[0]
-                        if sum(scores) > 0 else 0
+                        if sum(s_scores) > 0 else 0
                             for s_texts, s_scores in zip(window(paragraphs, slice_size), window(scores, slice_size))
+                    ]
+                else: # if model_name == "auto":
+                    slices = list( sizeWindow(paragraphs, slice_size) )
+                    logger.info( "Slices: %s", slices )
+                    slice_scores = [
+                        1 - pairwise_distances(question_features, tfidf.transform([ " ".join(paragraphs[start:end]) ]), "cosine").ravel()[0]
+                        if sum(scores[start:end]) > 0 else 0
+                            for start, end in slices
                     ]
 
             else: # if model_name in {"doc-slice-mp", "section-mp"}:
@@ -206,13 +238,19 @@ def make_app(build_dir: str = None) -> Flask:
                 if model_name == "doc-slice-mp":
                     scores = mp_scores(mp_results['paragraph_span_start_logits'], mp_results['paragraph_span_end_logits'])
 
-            if model_name in {"doc-slice", "doc-slice-mp"}:
-                if model_name == "doc-slice":
-                    best, scores = max(enumerate(slice_scores), key = lambda e: e[1])
-                else: # if model_name == "doc-slice-mp":
+            if model_name in {"auto", "doc-slice", "doc-slice-mp"}:
+                if model_name == "doc-slice-mp":
                     best, scores = max(enumerate(window(scores, slice_size)), key = lambda e: sum(e[1]))
-                bidaf_data['passage'] = ' '.join( paragraphs[best:best+slice_size] )
-                logger.info("Best slice at %d: %s", best, scores)
+                else: # if model_name in {"auto", "doc-slice"}:
+                    best, scores = max(enumerate(slice_scores), key = lambda e: e[1])
+
+                if model_name == "auto":
+                    start, end = slices[best]
+                    bidaf_data['passage'] = ' '.join( paragraphs[start:end] )
+                else: # if model_name in {"doc-slice", "doc-slice-mp"}:
+                    bidaf_data['passage'] = ' '.join( paragraphs[best:best+slice_size] )
+
+            logger.info("Best slice at %d: %s", best, scores)
             elif model_name in {"section", "section-mp"}:
                 bidaf_data['passage'] = ' '.join( sections[best_section] )
 
@@ -234,6 +272,9 @@ def make_app(build_dir: str = None) -> Flask:
         elif model_name in {"doc-slice", "doc-slice-mp"}:
             f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs[best:best+slice_size] )
             char_range = (add_par(f, best), add_par(t, best))
+        elif model_name == "auto":
+            f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs[start:end] )
+            char_range = (add_par(f, start), add_par(t, start))
         elif model_name == "baseline":
             char_range = ((best_section, 0), (best_section, len(paragraphs[best_section])))
         else: # if model_name in {"section", "section-mp"}:
