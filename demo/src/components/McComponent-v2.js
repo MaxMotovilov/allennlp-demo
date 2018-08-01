@@ -223,7 +223,8 @@ const McAnswerSnippet = ({ text, prediction }) => {
 
 const McSearch = ({mc, docs, more, canAnswer, expanded}) => {
 
-    const expandPdf = index => mc.setState({ expanded: index, tab: "pdf" });
+    const expand = (expanded, tab) => () => mc.setState({ expanded, tab });
+    const predict = index => () => mc.predict(index);
 
     return docs.length == 0 ? (
         <div className="search__result info">No search terms were supplied.</div>
@@ -232,9 +233,9 @@ const McSearch = ({mc, docs, more, canAnswer, expanded}) => {
             { docs.map(
                 ({id, highlights, prediction, text}, index) => (
                     <div key={id} className={"search__result " + (expanded === index ? "selected" : "")}>
-                        <a href="javascript:" onClick={() => expandPdf(index)} className={"pdf " + (prediction ? "" : "selected")}>{id}</a>
+                        <a href="javascript:" onClick={expand(index, "pdf")} className={"pdf " + (prediction ? "" : "selected")}>{id}</a>
                         {canAnswer ? (
-                            <a href="javascript:" onClick={() => mc.predict(index)} className={prediction ? "selected" : ""}>ANSWER{prediction ? "!" : "?"}</a>
+                            <a href="javascript:" onClick={prediction ? expand(index, "text") : predict(index)} className={prediction ? "selected" : ""}>ANSWER{prediction ? "!" : "?"}</a>
                         ) : null}
                         { prediction ?
                             ( <McAnswerSnippet text={text} prediction={prediction} /> )
@@ -336,7 +337,33 @@ class _McComponent extends React.Component {
                             err => console.error( err )
                         );
         }
+/*
+        const go = (docs) => {
+            const
+                {text} = docs[index];
 
+            return post( "/predict/auto", {question, doc: text.map( t => ({cpar: t}) )} )
+                        .then(
+                            prediction => {
+                                console.log( prediction );
+                                this.setState({
+                                    docs: docs.map(
+                                        (doc, i) => index === i ? {...doc, prediction} : doc
+                                    ),
+                                    running: null,
+                                    tab: "text",
+                                    expanded: index
+                                });
+                            },
+                            err => {
+                                console.error( err );
+                                this.setState({
+                                    running: null
+                                });
+                            }
+                        );
+        }
+*/
         if( docs[index].text )
             go(docs);
         else
@@ -407,7 +434,7 @@ class _McComponent extends React.Component {
 
         const searched = this.search();
 
-        if( searched )
+        if( searched && !(page in {save: 1, new: 1}) )
             searched.then( () => this.save( page, {terms, question} ) );
     }
 
