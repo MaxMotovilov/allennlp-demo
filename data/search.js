@@ -15,7 +15,10 @@ exports.elasticSearch =
             _source: text ? {includes: [ "cpar" ]} : false,
             sort: [ "_score" ],
             size: max,
-            query: { bool: { must: terms } },
+            query: { bool: Object.assign(
+                { must: terms },
+                q && { should: { match: {cpar: q} } }
+            ) },
             highlight: {
                 fields: { cpar: {} },
                 highlight_query: {
