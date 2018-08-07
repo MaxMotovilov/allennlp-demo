@@ -365,7 +365,8 @@ class _McComponent extends React.Component {
                                     more: total - results.length,
                                     docs: results,
                                     lastSearchUrl: url,
-                                    searching: false
+                                    searching: false,
+                                    tab: search
                                 });
                                 return results
                             }
