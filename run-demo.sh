@@ -2,17 +2,17 @@
 
 case $1 in
 	start)
-		kill -0 $(<run-demo.pid) && {
-			ps -ef | grep run-demo
+		[[ -s run-demo.pis ]] && kill -0 $(<run-demo.pid) && {
+			ps -ef | grep $(<run-demo.pid)
 			echo To stop: ./run-demo.sh stop
 			exit 1
 		}
 		nohup ./run-demo.sh 2>&1 >running-demo.log &
-		echo !$ >run-demo.pid
+		echo $! >run-demo.pid
 		exit 0
 	;;
 	stop)
-		kill -HUP $(<run-demo.pid)
+		kill -- -$(ps -o pgid= $(<run-demo.pid) | grep -o '[0-9]*')
 		rm run-demo.pid
 		exit 0
 	;;
