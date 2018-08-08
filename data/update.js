@@ -2,7 +2,7 @@
 
 const
     {resolve} = require('path'),
-    {readJson, writeJson, pathExists} = require('fs-extra');
+    {readJson, writeJson, pathExists, copy} = require('fs-extra');
 
 const
     db = resolve( __dirname, "db.json" ),
@@ -35,7 +35,7 @@ function lock() {
 
 function unlock( new_data ) {
     if( new_data )
-        return writeJson( db, new_data, {spaces: '\t'} ).then( done );
+        return writeJson( db, new_data, {spaces: '\t'} ).then( () => copy( db, `${db}.backup` ) ).then( done );
     else
         return done();
 
