@@ -95,8 +95,7 @@ def window(seq, n=2):
     "   s -> (s0,s1,...s[n-1]), (s1,s2,...,sn), ...                   "
     it = iter(seq)
     result = tuple(islice(it, n))
-    if len(result) == n:
-        yield result
+    yield result
     for elem in it:
         result = result[1:] + (elem,)
         yield result
@@ -174,7 +173,7 @@ def make_app(build_dir: str = None) -> Flask:
         if request.method == "OPTIONS":
             return Response(response="", status=200)
 
-        if model_name not in {'auto', 'doc', 'section', 'doc-slice', 'section-mp', 'doc-slice-mp', 'baseline'} or
+        if model_name not in {'auto', 'doc', 'section', 'doc-slice', 'section-mp', 'doc-slice-mp', 'baseline'} or \
            verb == "predictN" and model_name not in {'auto', 'doc-slice'}:
             raise ServerError("unknown predictor: {}".format(model_name), status_code=404)
 
@@ -266,7 +265,7 @@ def make_app(build_dir: str = None) -> Flask:
                     else: # if model_name == "auto"
                         best = slices[best]
 
-                    logger.info("Best slice at %d: %s", best, scores)
+                    logger.info("Best slice at %s: %s", best, scores)
 
         if verb == "predictN":
             bidaf_data = [ dict(bidaf_data) for i in range(len(best)) ]
