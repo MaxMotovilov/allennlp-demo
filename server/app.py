@@ -123,6 +123,14 @@ def sizeWindow(seq, size):
     if end > last_returned:
         yield (start, end)
 
+def takeTopN(scores, n, spanFromIndex):
+    top = []
+    for i in sorted( range(len(scores)), key = lambda i: scores[i] ):
+        start, end = spanFromIndex(i)
+        if all( e <= start or s >= end for s,e in top ):
+            top.append( (start, end) )
+    return top
+
 def make_app(build_dir: str = None) -> Flask:
     if build_dir is None:
         build_dir = os.path.join(DEMO_DIR, 'build')
@@ -160,13 +168,14 @@ def make_app(build_dir: str = None) -> Flask:
     def index() -> Response: # pylint: disable=unused-variable
         return send_file(os.path.join(build_dir, 'index.html'))
 
-    @app.route('/predict/<model_name>', methods=['POST', 'OPTIONS'])
-    def predict(model_name: str) -> Response:  # pylint: disable=unused-variable
+    @app.route('/<any("predict","predictN"):verb>/<model_name>', methods=['POST', 'OPTIONS'])
+    def predict(verb: str, model_name: str) -> Response:  # pylint: disable=unused-variable
         """make a prediction using the specified model and return the results"""
         if request.method == "OPTIONS":
             return Response(response="", status=200)
 
-        if model_name not in {'auto', 'doc', 'section', 'doc-slice', 'section-mp', 'doc-slice-mp', 'baseline'}:
+        if model_name not in {'auto', 'doc', 'section', 'doc-slice', 'section-mp', 'doc-slice-mp', 'baseline'} or
+           verb == "predictN" and model_name not in {'auto', 'doc-slice'}:
             raise ServerError("unknown predictor: {}".format(model_name), status_code=404)
 
         req_data = request.get_json()
@@ -240,20 +249,47 @@ def make_app(build_dir: str = None) -> Flask:
             if model_name in {"auto", "doc-slice", "doc-slice-mp"}:
                 if model_name == "doc-slice-mp":
                     best, scores = max(enumerate(window(scores, slice_size)), key = lambda e: sum(e[1]))
-                else: # if model_name in {"auto", "doc-slice"}:
+                    best = (best, best+slice_size)
+                elif verb == "predictN": # and model_name in {"auto", "doc-slice"}
+                    batch_size = req_data.get( "limit", 3 )
+                    if model_name == "auto":
+                        best, scores = takeTopN( slice_scores, batch_size, lambda i: slices[i] )
+                    else: # if model_name == "doc-slice":
+                        best, scores = takeTopN( slice_scores, batch_size, lambda i: (i, i+slice_size) )
+
+                    logger.info("Best slices: %s", zip( best, scores ))
+
+                else: # if verb == "predict" and model_name in {"auto", "doc-slice"}:
                     best, scores = max(enumerate(slice_scores), key = lambda e: e[1])
+                    if model_name == "doc-slice":
+                        best = (best, best+slice_size)
+                    else: # if model_name == "auto"
+                        best = slices[best]
 
-                if model_name == "auto":
-                    start, end = slices[best]
-                    bidaf_data['passage'] = ' '.join( paragraphs[start:end] )
-                else: # if model_name in {"doc-slice", "doc-slice-mp"}:
-                    bidaf_data['passage'] = ' '.join( paragraphs[best:best+slice_size] )
+                    logger.info("Best slice at %d: %s", best, scores)
 
-                logger.info("Best slice at %d: %s", best, scores)
-            elif model_name in {"section", "section-mp"}:
+        if verb == "predictN":
+            bidaf_data = [ dict(bidaf_data) for i in range(len(best)) ]
+            for i, (start, end) in enumerate(best):
+                bidaf_data[i]['passage'] = ' '.join( paragraphs[start:end] )
+
+            results = app.predictors['BiDAF'].predict_batch_json( bidaf_data )
+
+            logger.info("BiDAF predictions: %s", json.dumps([
+                {
+                    'question': req_data['question'],
+                    'span': r['best_span'],
+                    'text': r['best_span_str']
+                } for r in results
+            ]))
+
+        elif model_name != "baseline": # and verb == "predict"
+            if model_name in {"section", "section-mp"}:
                 bidaf_data['passage'] = ' '.join( sections[best_section] )
+            elif model_name in {"auto", "doc-slice", "doc-slice-mp"}:
+                start, end = best
+                bidaf_data['passage'] = ' '.join( paragraphs[start:end] )
 
-        if model_name != "baseline":
             results = app.predictors['BiDAF'].predict_json( bidaf_data )
 
             logger.info("BiDAF prediction: %s", json.dumps({
@@ -263,23 +299,29 @@ def make_app(build_dir: str = None) -> Flask:
             }))
 
             answer = results['best_span_str']
-        else:
+        else: # if model_name == "baseline":
             answer = paragraphs[best_section]
 
         if model_name == "doc":
             char_range = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs )
-        elif model_name in {"doc-slice", "doc-slice-mp"}:
-            f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs[best:best+slice_size] )
-            char_range = (add_par(f, best), add_par(t, best))
-        elif model_name == "auto":
-            f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs[start:end] )
-            char_range = (add_par(f, start), add_par(t, start))
         elif model_name == "baseline":
             char_range = ((best_section, 0), (best_section, len(paragraphs[best_section])))
-        else: # if model_name in {"section", "section-mp"}:
+        elif model_name in {"section", "section-mp"}:
             f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], sections[best_section] )
             offs = sum( ( len(sections[s]) for s in range(best_section) ) )
             char_range = (add_par(f, offs), add_par(t, offs))
+        else: # if model_name in {"auto", "doc-slice", "doc-slice-mp"}:
+            if verb == "predict":
+                f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs[start:end] )
+                char_range = (add_par(f, start), add_par(t, start))
+            else: # if verb == "predictN":
+                return jsonify([
+                    { 'text': answer, 'range': (add_par(f, start), add_par(t, start)) }
+                    for answer, (f, t) in (
+                        (result['best_span_str'], map_span( tuple( result['best_span'] ), result['passage_tokens'], paragraphs[start:end] ))
+                        for result, start, end in zip(results, best)
+                    )
+                ])
 
         return jsonify({
             'text': answer,
