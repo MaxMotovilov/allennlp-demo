@@ -23,7 +23,7 @@ exports.elasticSearch =
                 fields: { cpar: {} },
                 highlight_query: {
                     bool: { should: terms.concat(
-                        q ? {match: { cpar: q }} : []
+                        q ? {match: { cpar: {analyzer: "my_snowball_analyzer", query: q} }} : []
                     ) }
                 }
             }
