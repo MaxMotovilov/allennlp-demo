@@ -52,7 +52,36 @@
 				"lorex",
 				"lh300"
 			],
-			"question": "where is my screenshot?"
+			"question": "where is my screenshot?",
+			"model": "auto",
+			"sliceSizes": {
+				"auto": 4096,
+				"doc-slice": 50
+			}
+		},
+		"netgear-nighthawk-location": {
+			"name": "Netgear Nighthawk Location",
+			"terms": [
+				"Netgear Nighthawk"
+			],
+			"question": "What is the best location for my router?",
+			"model": "auto",
+			"sliceSizes": {
+				"auto": 8192,
+				"doc-slice": 50
+			}
+		},
+		"hp-officejet": {
+			"name": "HP Officejet",
+			"terms": [
+				"HP officejet 8040"
+			],
+			"question": "What should I do if the printer won't connect to a network?",
+			"model": "auto",
+			"sliceSizes": {
+				"auto": 8192,
+				"doc-slice": 500
+			}
 		}
 	}
 }
