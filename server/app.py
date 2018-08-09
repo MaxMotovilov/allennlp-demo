@@ -131,12 +131,14 @@ def sizeWindow(seq, size):
     if end > last_returned:
         yield (start, end)
 
+TFIDF_SCORE_CUTOFF = 0.5
+
 def takeTopN(scores, n, spanFromIndex):
     top = []
     top_scores = []
     for i in sorted( range(len(scores)), key = lambda i: scores[i], reverse = True ):
         start, end = spanFromIndex(i)
-        if scores[i] == 0:
+        if len(top_scores) > 0 and scores[i] < TFIDF_SCORE_CUTOFF * top_scores[0]:
             break
         if all( e <= start or s >= end for s,e in top ):
             top.append( (start, end) )
