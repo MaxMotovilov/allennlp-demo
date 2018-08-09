@@ -1245,6 +1245,7 @@ svg {
 	margin: 0 1em;
 	padding: 1em;
     border-bottom: 1px solid #2085bc;
+	min-height: 3em;
 }
 
 .search__result.info {

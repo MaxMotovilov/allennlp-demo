@@ -317,7 +317,9 @@ const McSearch = ({mc, docs, more, canAnswer, expanded}) => {
                             <a href="javascript:" onClick={prediction ? expand(index, "text") : predict(index)} className={prediction ? "tab selected" : "tab"}>ANSWER{prediction ? "!" : "?"}</a>
                         ) : null}
                         { prediction ?
-                            prediction.map( (p, i) => ( <McAnswerSnippet mc={mc} key={i} text={text} prediction={p} index={i} docIndex={index} /> ) )
+                            prediction.length ?
+                                prediction.map( (p, i) => ( <McAnswerSnippet mc={mc} key={i} text={text} prediction={p} index={i} docIndex={index} /> ) )
+                              : ( <p>This document does not contain an answer.</p> )
                           : highlights ?
                             highlights.map( t => (<p dangerouslySetInnerHTML={{__html: t}} />) )
                           : ( <p>Enter your question to see content snippets</p> ) }
@@ -377,7 +379,7 @@ class _McComponent extends React.Component {
                                     (doc, i) => index === i ? {...doc, prediction} : doc
                                 ),
                                 running: null,
-                                tab: "text",
+                                tab: prediction.length ? "text" : "search",
                                 expanded: index
                             });
                         },
