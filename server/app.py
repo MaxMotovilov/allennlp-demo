@@ -320,8 +320,8 @@ def make_app(build_dir: str = None) -> Flask:
             else: # if verb == "predictN":
                 return jsonify([
                     { 'text': answer, 'range': (add_par(f, start), add_par(t, start)) }
-                    for answer, (f, t) in (
-                        (result['best_span_str'], map_span( tuple( result['best_span'] ), result['passage_tokens'], paragraphs[start:end] ))
+                    for answer, start, (f, t) in (
+                        (result['best_span_str'], start, map_span( tuple( result['best_span'] ), result['passage_tokens'], paragraphs[start:end] ))
                         for result, (start, end) in zip(results, best)
                     )
                 ])
