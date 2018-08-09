@@ -571,6 +571,10 @@ form {
  	border: .125em solid #d4dce2;
 }
 
+.form__field select+select {
+	margin-left: 1em;
+}
+
 .form__field input[type=text].form__option {
 	display: inline-block;
 	margin: 0 1em;
