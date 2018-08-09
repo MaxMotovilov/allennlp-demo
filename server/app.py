@@ -127,6 +127,8 @@ def takeTopN(scores, n, spanFromIndex):
     top_scores = []
     for i in sorted( range(len(scores)), key = lambda i: scores[i], reverse = True ):
         start, end = spanFromIndex(i)
+        if scores[i] == 0:
+            break
         if all( e <= start or s >= end for s,e in top ):
             top.append( (start, end) )
             top_scores.append( scores[i] )
