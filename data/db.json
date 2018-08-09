@@ -46,19 +46,6 @@
 		]
 	},
 	"v2": {
-		"lorex-screenshot": {
-			"name": "Lorex screenshot",
-			"terms": [
-				"lorex",
-				"lh300"
-			],
-			"question": "where is my screenshot?",
-			"model": "auto",
-			"sliceSizes": {
-				"auto": 4096,
-				"doc-slice": 50
-			}
-		},
 		"netgear-nighthawk-location": {
 			"name": "Netgear Nighthawk Location",
 			"terms": [
@@ -67,7 +54,7 @@
 			"question": "What is the best location for my router?",
 			"model": "auto",
 			"sliceSizes": {
-				"auto": 8192,
+				"auto": 4096,
 				"doc-slice": 50
 			}
 		},
@@ -81,6 +68,31 @@
 			"sliceSizes": {
 				"auto": 8192,
 				"doc-slice": 500
+			}
+		},
+		"samsung-fridge-icemaker": {
+			"name": "Samsung Fridge IceMaker",
+			"terms": [
+				"samsung",
+				"rf18"
+			],
+			"question": "Why is the Icemaker not making ice?",
+			"model": "auto",
+			"sliceSizes": {
+				"auto": 4096,
+				"doc-slice": 50
+			}
+		},
+		"whirlpool-washer-garment-mesh": {
+			"name": "Whirlpool Washer Garment Mesh",
+			"terms": [
+				"W10779704A"
+			],
+			"question": "When should I use garment mesh?",
+			"model": "auto",
+			"sliceSizes": {
+				"auto": 4096,
+				"doc-slice": 50
 			}
 		}
 	}
