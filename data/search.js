@@ -17,7 +17,7 @@ exports.elasticSearch =
             size: max,
             query: { bool: Object.assign(
                 { must: terms },
-                q && { should: { match: {cpar: q} } }
+                q && { should: { match: {cpar: {analyzer: "my_snowball_analyzer", query: q}} } }
             ) },
             highlight: {
                 fields: { cpar: {} },
