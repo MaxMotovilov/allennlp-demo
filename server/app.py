@@ -124,11 +124,15 @@ def sizeWindow(seq, size):
 
 def takeTopN(scores, n, spanFromIndex):
     top = []
-    for i in sorted( range(len(scores)), key = lambda i: scores[i] ):
+    top_scores = []
+    for i in sorted( range(len(scores)), key = lambda i: scores[i], reverse = True ):
         start, end = spanFromIndex(i)
         if all( e <= start or s >= end for s,e in top ):
             top.append( (start, end) )
-    return top
+            top_scores.append( scores[i] )
+            if len(top) >= n:
+                break
+    return top, top_scores
 
 def make_app(build_dir: str = None) -> Flask:
     if build_dir is None:
@@ -256,7 +260,7 @@ def make_app(build_dir: str = None) -> Flask:
                     else: # if model_name == "doc-slice":
                         best, scores = takeTopN( slice_scores, batch_size, lambda i: (i, i+slice_size) )
 
-                    logger.info("Best slices: %s", zip( best, scores ))
+                    logger.info("Best slices: %s", list(zip( best, scores )))
 
                 else: # if verb == "predict" and model_name in {"auto", "doc-slice"}:
                     best, scores = max(enumerate(slice_scores), key = lambda e: e[1])
@@ -318,7 +322,7 @@ def make_app(build_dir: str = None) -> Flask:
                     { 'text': answer, 'range': (add_par(f, start), add_par(t, start)) }
                     for answer, (f, t) in (
                         (result['best_span_str'], map_span( tuple( result['best_span'] ), result['passage_tokens'], paragraphs[start:end] ))
-                        for result, start, end in zip(results, best)
+                        for result, (start, end) in zip(results, best)
                     )
                 ])
 
