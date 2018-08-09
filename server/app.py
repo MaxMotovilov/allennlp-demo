@@ -29,6 +29,9 @@ from allennlp.predictors.predictor import Predictor
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import pairwise_distances
 
+from nltk.stem.snowball import EnglishStemmer
+from nltk import word_tokenize
+
 # Can override cache size with an environment variable. If it's 0 then disable caching altogether.
 CACHE_SIZE = os.environ.get("FLASK_CACHE_SIZE") or 128
 PORT = int(os.environ.get("ALLENNLP_DEMO_PORT") or 8080)
@@ -37,6 +40,12 @@ DEMO_DIR = os.environ.get("ALLENNLP_DEMO_DIRECTORY") or 'demo/'
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 logger.setLevel(logging.INFO)
 logger.addHandler( logging.StreamHandler() )
+
+class NltkSnowballEnglish(object):
+    def __init__(self):
+        self.stemmer = EnglishStemmer()
+    def __call__(self, doc):
+        return [self.stemmer.stem(t) for t in word_tokenize(doc)]
 
 class ServerError(Exception):
     status_code = 400
@@ -204,7 +213,7 @@ def make_app(build_dir: str = None) -> Flask:
                 slice_size = req_data.get( "sliceSize", 4096 ) # in characters
 
             if model_name in {"auto", "doc-slice", "section", "baseline"}:
-                tfidf = TfidfVectorizer(strip_accents="unicode", stop_words="english")
+                tfidf = TfidfVectorizer(strip_accents="unicode", stop_words="english", tokenizer=NltkSnowballEnglish)
 
                 if model_name == "section":
                     text_features = tfidf.fit_transform( (" ".join(s) for s in sections) )
