@@ -107,6 +107,19 @@
 				"auto": 4096,
 				"doc-slice": 50
 			}
+		},
+		"dell-xps-13-ssd": {
+			"name": "Dell XPS 13 SSD",
+			"terms": [
+				"dell",
+				"xps 13"
+			],
+			"question": "Does it have an SSD?",
+			"model": "auto",
+			"sliceSizes": {
+				"auto": 4096,
+				"doc-slice": 50
+			}
 		}
 	}
 }
