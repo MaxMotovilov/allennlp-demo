@@ -16,7 +16,7 @@ exports.elasticSearch =
             sort: [ "_score" ],
             size: max,
             query: { bool: Object.assign(
-                { must: terms },
+                { [q ? "filter" : "must"]: terms },
                 q && { should: { match: {cpar: {analyzer: "my_snowball_analyzer", query: q}} } }
             ) },
             highlight: {
