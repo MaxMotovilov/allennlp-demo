@@ -351,9 +351,11 @@ class McWait extends React.Component {
   <McComponent /> Component
 *******************************************************************************/
 
+const defaultState = { terms: [], question: "", docs: [], more: null, expanded: null, tab: "search" };
+
 class _McComponent extends React.Component {
 
-    state = { terms: [], question: "", docs: [], more: null, tab: "search", model: "auto", sliceSizes: { auto: 4096, "doc-slice": 50 }, limit: 3 }
+    state = {...defaultState, model: "auto", sliceSizes: { auto: 4096, "doc-slice": 50 }, limit: 3}
 
     predict( index ) {
         const {question, docs, model, limit, sliceSizes} = this.state;
@@ -444,6 +446,8 @@ class _McComponent extends React.Component {
         const {match: {params: {page: currentPage}}} = this.props;
         if( page && page !== currentPage && !(page in {save: 1, new: 1}) )
             this.load( page );
+        else if( page == "new" )
+            this.setState( defaultState );
     }
 
     componentWillUpdate({location: {state}}, {terms, question, tab}) {
