@@ -183,23 +183,24 @@ class McInput extends React.Component {
 *******************************************************************************/
 
 const makeHighlight = (text, top) => (
-    <span className="passage__answer" ref={top && (elt => elt && elt.scrollIntoView())}>{text}</span>
+    /*  */
+    <span className="passage__answer" ref={top ? (elt => elt && elt.scrollIntoView()) : null}>{text}</span>
 );
 
-const highlightAnswer = (text, prediction, offset=0) => {
+const highlightAnswer = (text, prediction, offset=0, first=false) => {
     function highlight( text, n ) {
         const {range: [[begin, beginPos], [end, endPos]]} = prediction;
         return n < begin || n > end ? text :
                 begin == end ? (
                     <Fragment>
                         {text.substring( 0, beginPos )}
-                        {makeHighlight(text.substring( beginPos, endPos ), true)}
+                        {makeHighlight(text.substring( beginPos, endPos ), first)}
                         {text.substring( endPos )}
                     </Fragment>
                 ) :	n == begin ? (
                     <Fragment>
                         {text.substring( 0, beginPos )}
-                        {makeHighlight(text.substring( beginPos ), true)}
+                        {makeHighlight(text.substring( beginPos ), first)}
                     </Fragment>
                 ) : n == end ? (
                     <Fragment>
@@ -218,11 +219,28 @@ const highlightAnswer = (text, prediction, offset=0) => {
             );
 }
 
-const McText = ({doc: {text, prediction}, className}) => (
-    <div key="text" className={"pane__text " + className}>
-        {highlightAnswer( text, prediction )}
-    </div>
-);
+const McText = ({doc: {text, prediction}, className}) => {
+    let last = 0;
+
+    const plain = offset => (t, i) => (<p key={i + offset}>{t}</p>);
+
+    return (
+        <div key="text" className={"pane__text " + className}>
+            {prediction.reduce(
+                (list, prediction) => {
+                    const {range: [[begin], [end]]} = prediction, from = last;
+                    last = end+1;
+                    if( begin > from )
+                        list.push.apply( list, text.slice( from, begin ).map( plain(from) ) );
+                    list.push.apply( list, highlightAnswer( text.slice(begin, end+1), prediction, begin, from == 0 ) );
+                    return list;
+                }, []
+            ).concat(
+                text.length > last ? text.slice( last ).map( plain(last) ) : []
+            )}
+        </div>
+    );
+}
 
 const
     MAX_LINES_IN_SNIPPET = 5,
@@ -249,7 +267,7 @@ const McAnswerSnippet = ({ text, prediction }) => {
         }
     }
 
-    return (<Fragment>{highlightAnswer(text.slice(begin, end), prediction, begin)}</Fragment>);
+    return (<div className="passage__snippet">{highlightAnswer(text.slice(begin, end+1), prediction, begin)}</div>);
 }
 
 const McSearch = ({mc, docs, more, canAnswer, expanded}) => {
@@ -269,7 +287,7 @@ const McSearch = ({mc, docs, more, canAnswer, expanded}) => {
                             <a href="javascript:" onClick={prediction ? expand(index, "text") : predict(index)} className={prediction ? "selected" : ""}>ANSWER{prediction ? "!" : "?"}</a>
                         ) : null}
                         { prediction ?
-                            ( <McAnswerSnippet text={text} prediction={prediction} /> )
+                            prediction.map( p => ( <McAnswerSnippet text={text} prediction={p} /> ) )
                           : highlights ?
                             highlights.map( t => (<p dangerouslySetInnerHTML={{__html: t}} />) )
                           : ( <p>Enter your question to see content snippets</p> ) }
@@ -305,36 +323,39 @@ class McWait extends React.Component {
 
 class _McComponent extends React.Component {
 
-    state = { terms: [], question: "", docs: [], more: null, tab: "search", model: "auto", sliceSizes: { auto: 4096, "doc-slice": 50 } }
+    state = { terms: [], question: "", docs: [], more: null, tab: "search", model: "auto", sliceSizes: { auto: 4096, "doc-slice": 50 }, limit: 3 }
 
     predict( index ) {
-        const {question, docs, model, sliceSizes} = this.state;
+        const {question, docs, model, limit, sliceSizes} = this.state;
 
         this.setState({ running: +new Date() });
 
         const go = (docs) => {
             const {text} = docs[index];
 
-            return post( `/predict/${model}`, {question, doc: text.map( t => ({cpar: t}) ), sliceSize: sliceSizes[model]} )
-                        .then(
-                            prediction => {
-                                console.log( prediction );
-                                this.setState({
-                                    docs: docs.map(
-                                        (doc, i) => index === i ? {...doc, prediction} : doc
-                                    ),
-                                    running: null,
-                                    tab: "text",
-                                    expanded: index
-                                });
-                            },
-                            err => {
-                                console.error( err );
-                                this.setState({
-                                    running: null
-                                });
-                            }
-                        );
+            return post( `/predict${limit>1 && model!="doc"?"N":""}/${model}`,
+                          {question, doc: text.map( t => ({cpar: t}) ), sliceSize: sliceSizes[model], limit: limit <= 1 ? undefined : limit}
+                    ).then(
+                        prediction => {
+                            console.log( prediction );
+                            if( !Array.isArray(prediction) )
+                                prediction = [prediction];
+                            this.setState({
+                                docs: docs.map(
+                                    (doc, i) => index === i ? {...doc, prediction} : doc
+                                ),
+                                running: null,
+                                tab: "text",
+                                expanded: index
+                            });
+                        },
+                        err => {
+                            console.error( err );
+                            this.setState({
+                                running: null
+                            });
+                        }
+                    );
         }
 
         if( docs[index].text )

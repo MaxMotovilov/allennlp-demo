@@ -1282,6 +1282,8 @@ svg {
 	background-image: url(../assets/pdf-blue.png);
 	background-repeat: no-repeat;
 	background-position: 0.5em 1ex;
+	background-color: inherit;
+	z-index: 2;
 }
 
 .search__result.selected a.selected {
@@ -1297,6 +1299,14 @@ svg {
 .passage.model__content__summary {
   line-height: 1.875em;
   font-size: 1.125em
+}
+
+.passage__snippet {
+  padding: 1ex 0;
+}
+
+.passage__snippet+.passage__snippet {
+  border-top: solid 1px lightgray;
 }
 
 .passage__answer {
