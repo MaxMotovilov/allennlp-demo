@@ -1156,6 +1156,10 @@ svg {
   margin: auto
 }
 
+.pane__right a:hover {
+	color: white;
+}
+
 .pane__thumb {
   height: auto;
   min-height: 100%;
@@ -1269,7 +1273,7 @@ svg {
 	background-color: #f6f7fa;
 }
 
-.search__result a {
+.search__result a.tab {
     font-size: 18px;
     float: right;
 	margin: -0.9em -0.9em 0.7em 0;
@@ -1282,7 +1286,7 @@ svg {
 	clear: right;
 }
 
-.search__result a.pdf {
+.search__result a.pdf.tab {
 	background-image: url(../assets/pdf-blue.png);
 	background-repeat: no-repeat;
 	background-position: 0.5em 1ex;
@@ -1290,12 +1294,12 @@ svg {
 	z-index: 2;
 }
 
-.search__result.selected a.selected {
+.search__result.selected a.tab.selected {
 	background-color: #2085bc;
     color: white;
 }
 
-.search__result.selected a.pdf.selected {
+.search__result.selected a.pdf.tab.selected {
 	background-image: url(../assets/pdf-white.png);
 	background-repeat: no-repeat;
 }
@@ -1318,7 +1322,26 @@ svg {
   background: #40affd;
   color: #fff;
   padding: .1875em;
-  margin: 0 .125em
+  margin: 0 .125em;
+  position: relative;
+}
+
+.passage__answer:hover:before {
+	position: absolute;
+	background: #fff;
+	left: 0px;
+	top: 0px;
+  	color: #40affd;
+	content: "SHOW NEXT";
+	font-size: 60%;
+	line-height: 120%;
+	max-width: 3em;
+	padding: 0.4ex 1ex;
+	text-align: center;
+}
+
+.passage__snippet .passage__answer:hover:before {
+	content: "OPEN TEXT";
 }
 
 .srl-table, .ner-table {

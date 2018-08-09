@@ -194,47 +194,59 @@ class McInput extends React.Component {
   <McOutput /> Component
 *******************************************************************************/
 
-const makeHighlight = (text, top) => (
-    /*  */
-    <span className="passage__answer" ref={top ? (elt => elt && elt.scrollIntoView()) : null}>{text}</span>
-);
+const highlightAnswer =
+    makeHighlight =>
+        (text, prediction, offset=0, index) => {
+            function highlight( text, n ) {
+                const {range: [[begin, beginPos], [end, endPos]]} = prediction;
+                return n < begin || n > end ? text :
+                        begin == end ? (
+                            <Fragment>
+                                {text.substring( 0, beginPos )}
+                                {makeHighlight(text.substring( beginPos, endPos ), index)}
+                                {text.substring( endPos )}
+                            </Fragment>
+                        ) :	n == begin ? (
+                            <Fragment>
+                                {text.substring( 0, beginPos )}
+                                {makeHighlight(text.substring( beginPos ), index)}
+                            </Fragment>
+                        ) : n == end ? (
+                            <Fragment>
+                                {makeHighlight(text.substring( 0, endPos ), index)}
+                                {text.substring( endPos )}
+                            </Fragment>
+                        ) : makeHighlight(text, index);
+            }
 
-const highlightAnswer = (text, prediction, offset=0, first=false) => {
-    function highlight( text, n ) {
-        const {range: [[begin, beginPos], [end, endPos]]} = prediction;
-        return n < begin || n > end ? text :
-                begin == end ? (
-                    <Fragment>
-                        {text.substring( 0, beginPos )}
-                        {makeHighlight(text.substring( beginPos, endPos ), first)}
-                        {text.substring( endPos )}
-                    </Fragment>
-                ) :	n == begin ? (
-                    <Fragment>
-                        {text.substring( 0, beginPos )}
-                        {makeHighlight(text.substring( beginPos ), first)}
-                    </Fragment>
-                ) : n == end ? (
-                    <Fragment>
-                        {makeHighlight(text.substring( 0, endPos ))}
-                        {text.substring( endPos )}
-                    </Fragment>
-                ) : makeHighlight(text);
-    }
+            return text.map(
+                        (t, i) => t ? (
+                            <p key={i + offset}>
+                                {prediction ? highlight(t, i + offset) : t}
+                            </p>
+                        ) : null
+                    );
+        }
 
-    return text.map(
-                (t, i) => t ? (
-                    <p key={i + offset}>
-                        {prediction ? highlight(t, i + offset) : t}
-                    </p>
-                ) : null
-            );
-}
+const setHash = elt => elt && (window.location.hash = window.location.hash || elt.id);
 
 const McText = ({doc: {text, prediction}, className}) => {
-    let last = 0;
+    let last = 0, index = 0, last_index;
 
     const plain = offset => (t, i) => (<p key={i + offset}>{t}</p>);
+
+    const highlight = highlightAnswer(
+        (text, index) => {
+            const result = (
+                <a key={`answer-${index}`} id={last_index != index ? `answer-${index}` : null} href={`#answer-${(index+1)%prediction.length}`} className="passage__answer"
+                   ref={index > 0 || last_index != null ? null : setHash}>{text}</a>
+            );
+
+            last_index = index;
+
+            return result;
+        }
+    );
 
     return (
         <div key="text" className={"pane__text " + className}>
@@ -244,7 +256,7 @@ const McText = ({doc: {text, prediction}, className}) => {
                     last = end+1;
                     if( begin > from )
                         list.push.apply( list, text.slice( from, begin ).map( plain(from) ) );
-                    list.push.apply( list, highlightAnswer( text.slice(begin, end+1), prediction, begin, from == 0 ) );
+                    list.push.apply( list, highlight( text.slice(begin, end+1), prediction, begin, index++ ) );
                     return list;
                 }, []
             ).concat(
@@ -258,12 +270,18 @@ const
     MAX_LINES_IN_SNIPPET = 5,
     MAX_CHARS_IN_SNIPPET = 500;
 
-const McAnswerSnippet = ({ text, prediction }) => {
+const McAnswerSnippet = ({ mc, text, prediction, index, docIndex }) => {
     let
         {range: [[begin], [end]]} = prediction,
         lines = end - begin + 1,
         chars = text.slice( begin, end+1 ).reduce( (n, t) => n + t.length, 0 ),
         atStart = 0, atEnd = 0;
+
+    const highlight = highlightAnswer(
+        (text, index) => (
+            <a href={`#answer-${index}`} className="passage__answer" onClick={() => mc.setState({ expanded: docIndex, tab: "text" })}>{text}</a>
+        )
+    );
 
     while( lines < MAX_LINES_IN_SNIPPET && chars < MAX_CHARS_IN_SNIPPET ) {
         if( atEnd <= atStart && end < text.length ) {
@@ -279,7 +297,7 @@ const McAnswerSnippet = ({ text, prediction }) => {
         }
     }
 
-    return (<div className="passage__snippet">{highlightAnswer(text.slice(begin, end+1), prediction, begin)}</div>);
+    return (<div key={index} className="passage__snippet">{highlight(text.slice(begin, end+1), prediction, begin, index)}</div>);
 }
 
 const McSearch = ({mc, docs, more, canAnswer, expanded}) => {
@@ -294,12 +312,12 @@ const McSearch = ({mc, docs, more, canAnswer, expanded}) => {
             { docs.map(
                 ({id, highlights, prediction, text}, index) => (
                     <div key={id} className={"search__result " + (expanded === index ? "selected" : "")}>
-                        <a href="javascript:" onClick={expand(index, "pdf")} className={"pdf " + (prediction ? "" : "selected")}>{id}</a>
+                        <a href="javascript:" onClick={expand(index, "pdf")} className={"pdf " + (prediction ? "tab" : "tab selected")}>{id}</a>
                         {canAnswer ? (
-                            <a href="javascript:" onClick={prediction ? expand(index, "text") : predict(index)} className={prediction ? "selected" : ""}>ANSWER{prediction ? "!" : "?"}</a>
+                            <a href="javascript:" onClick={prediction ? expand(index, "text") : predict(index)} className={prediction ? "tab selected" : "tab"}>ANSWER{prediction ? "!" : "?"}</a>
                         ) : null}
                         { prediction ?
-                            prediction.map( p => ( <McAnswerSnippet text={text} prediction={p} /> ) )
+                            prediction.map( (p, i) => ( <McAnswerSnippet mc={mc} key={i} text={text} prediction={p} index={i} docIndex={index} /> ) )
                           : highlights ?
                             highlights.map( t => (<p dangerouslySetInnerHTML={{__html: t}} />) )
                           : ( <p>Enter your question to see content snippets</p> ) }
@@ -428,11 +446,14 @@ class _McComponent extends React.Component {
             this.load( page );
     }
 
-    componentWillUpdate({location: {state}}, {terms, question}) {
+    componentWillUpdate({location: {state}}, {terms, question, tab}) {
         if( state ) {
             state.terms = terms;
             state.question = question;
         }
+
+        if( tab != "text" )
+            window.location.hash = "";
     }
 
     componentDidUpdate() {
