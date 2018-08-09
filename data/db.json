@@ -94,6 +94,19 @@
 				"auto": 4096,
 				"doc-slice": 50
 			}
+		},
+		"lg-refrigerator-bad-odor": {
+			"name": "LG Refrigerator Bad Odor",
+			"terms": [
+				"LSXS26366S",
+				"manual"
+			],
+			"question": "Why is there a bad odor?",
+			"model": "auto",
+			"sliceSizes": {
+				"auto": 4096,
+				"doc-slice": 50
+			}
 		}
 	}
 }
