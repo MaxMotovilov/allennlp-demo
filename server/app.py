@@ -213,7 +213,7 @@ def make_app(build_dir: str = None) -> Flask:
                 slice_size = req_data.get( "sliceSize", 4096 ) # in characters
 
             if model_name in {"auto", "doc-slice", "section", "baseline"}:
-                tfidf = TfidfVectorizer(strip_accents="unicode", stop_words="english", tokenizer=NltkSnowballEnglish)
+                tfidf = TfidfVectorizer(strip_accents="unicode", stop_words="english", tokenizer=NltkSnowballEnglish())
 
                 if model_name == "section":
                     text_features = tfidf.fit_transform( (" ".join(s) for s in sections) )
