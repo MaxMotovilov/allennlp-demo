@@ -448,7 +448,7 @@ class _McComponent extends React.Component {
         const {match: {params: {page: currentPage}}} = this.props;
         if( page && page !== currentPage && !(page in {save: 1, new: 1}) )
             this.load( page );
-        else if( page == "new" )
+        else if( page == "new" && page !== currentPage )
             this.setState( defaultState );
     }
 
