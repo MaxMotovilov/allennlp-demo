@@ -138,7 +138,7 @@ def takeTopN(scores, n, spanFromIndex):
     top_scores = []
     for i in sorted( range(len(scores)), key = lambda i: scores[i], reverse = True ):
         start, end = spanFromIndex(i)
-        if len(top_scores) > 0 and scores[i] < TFIDF_SCORE_CUTOFF * top_scores[0]:
+        if scores[i] == 0 or len(top_scores) > 0 and scores[i] < TFIDF_SCORE_CUTOFF * top_scores[0]:
             break
         if all( e <= start or s >= end for s,e in top ):
             top.append( (start, end) )
@@ -274,6 +274,9 @@ def make_app(build_dir: str = None) -> Flask:
                         best, scores = takeTopN( slice_scores, batch_size, lambda i: (i, i+slice_size) )
 
                     logger.info("Best slices: %s", list(zip( best, scores )))
+
+                    if len(best) == 0: # No match, nothing to do
+                        return jsonify([])
 
                 else: # if verb == "predict" and model_name in {"auto", "doc-slice"}:
                     best, scores = max(enumerate(slice_scores), key = lambda e: e[1])
