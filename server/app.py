@@ -29,6 +29,8 @@ from allennlp.predictors.predictor import Predictor
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import pairwise_distances
 
+from server.similarity import SliceBySimilarityToQuery
+
 # from nltk.stem.snowball import EnglishStemmer
 # from nltk import word_tokenize
 
@@ -109,28 +111,6 @@ def window(seq, n=2):
         result = result[1:] + (elem,)
         yield result
 
-def sizeWindow(seq, size):
-    it = iter(seq)
-    start = 0
-    end = 0
-    w = []
-    last_returned = 0
-    weight = 0
-    for next in it:
-        weight += len(next) + (1 if weight>0 else 0)
-        w.append( len(next) )
-        end += 1
-        if weight >= size:
-            yield (start, end)
-            last_returned = end
-            while weight >= size/2:
-                weight -= w.pop(0)
-                start += 1
-                if start < end:
-                    weight -= 1
-    if end > last_returned:
-        yield (start, end)
-
 TFIDF_SCORE_CUTOFF = 0.5
 
 def takeTopN(scores, n, spanFromIndex):
@@ -209,12 +189,10 @@ def make_app(build_dir: str = None) -> Flask:
         if model_name == "doc":
             bidaf_data['passage'] = " ".join( paragraphs )
         else:
-            if model_name in {"doc-slice", "doc-slice-mp"}:
+            if model_name in {"doc-slice", "doc-slice-mp", "auto"}:
                 slice_size = req_data.get( "sliceSize", 10 ) # in paragraphs
-            elif model_name == "auto":
-                slice_size = req_data.get( "sliceSize", 4096 ) # in characters
 
-            if model_name in {"auto", "doc-slice", "section", "baseline"}:
+            if model_name in {"doc-slice", "section", "baseline"}:
                 tfidf = TfidfVectorizer(strip_accents="unicode", stop_words="english") # tokenizer=NltkSnowballEnglish
 
                 if model_name == "section":
@@ -235,13 +213,10 @@ def make_app(build_dir: str = None) -> Flask:
                         if sum(s_scores) > 0 else 0
                             for s_texts, s_scores in zip(window(paragraphs, slice_size), window(scores, slice_size))
                     ]
-                else: # if model_name == "auto":
-                    slices = list( sizeWindow(paragraphs, slice_size) )
-                    slice_scores = [
-                        1 - pairwise_distances(question_features, tfidf.transform([ " ".join(paragraphs[start:end]) ]), "cosine").ravel()[0]
-                        if sum(scores[start:end]) > 0 else 0
-                            for start, end in slices
-                    ]
+            elif model_name == "auto":
+                slicer = SliceBySimilarityToQuery( paragraphs, req_data['question'] )
+                slice_byte_count = req_data.get( "sliceByteCount", 4096 ) # in characters
+                drop_off = req_date.get( "atLeast", None )
 
             else: # if model_name in {"doc-slice-mp", "section-mp"}:
                 if model_name == "doc-slice-mp":
@@ -269,7 +244,7 @@ def make_app(build_dir: str = None) -> Flask:
                 elif verb == "predictN": # and model_name in {"auto", "doc-slice"}
                     batch_size = req_data.get( "limit", 3 )
                     if model_name == "auto":
-                        best, scores = takeTopN( slice_scores, batch_size, lambda i: slices[i] )
+                        best, scores = slicer.best( batch_size, drop_off, slice_size, slice_byte_size )
                     else: # if model_name == "doc-slice":
                         best, scores = takeTopN( slice_scores, batch_size, lambda i: (i, i+slice_size) )
 
@@ -279,13 +254,13 @@ def make_app(build_dir: str = None) -> Flask:
                         return jsonify([])
 
                 else: # if verb == "predict" and model_name in {"auto", "doc-slice"}:
-                    best, scores = max(enumerate(slice_scores), key = lambda e: e[1])
                     if model_name == "doc-slice":
+                        best, scores = max(enumerate(slice_scores), key = lambda e: e[1])
                         best = (best, best+slice_size)
                     else: # if model_name == "auto"
-                        best = slices[best]
+                        best, scores = slicer.best( 1, drop_off, slice_size, slice_byte_size )
 
-                    logger.info("Best slice at %s: %s", best, scores)
+                    logger.info("Best slice at %s: %s", best[0], scores)
 
         if verb == "predictN":
             bidaf_data = [ dict(bidaf_data) for i in range(len(best)) ]
