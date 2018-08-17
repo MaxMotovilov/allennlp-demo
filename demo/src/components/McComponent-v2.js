@@ -106,25 +106,30 @@ class McInput extends React.Component {
         }
     }
 
-    handleOptionChange = ({target: {value}}) => {
-        const {mc, model} = this.props;
-        mc.setState( ({sliceSizes, ...rest}) => ({...rest, sliceSizes: {...sliceSizes, [model]: parseInt(value) }}) );
-    }
+    handleOptionChange =
+        prop =>
+            ({target: {value}}) => {
+                const {mc, model} = this.props;
+                mc.setState(
+                    ({options, ...state}) => ({
+                        ...state,
+                        options: {
+                            ...options,
+                            [model]: { ...options[model], [prop]: parseInt(value) }
+                        }
+                    })
+                );
+            }
 
     handleModelChange = ({target: {value: model}}) => {
         if( model )
             this.props.mc.setState({ model });
     }
 
-    handleLimitChange = ({target: {value: limit}}) => {
-        if( limit )
-            this.props.mc.setState({ limit: parseInt(limit) });
-    }
-
     render() {
 
         const {newTerm} = this.state;
-        const {question, terms, mc, model, limit, sliceSizes} = this.props;
+        const {question, terms, mc, model, limit, options} = this.props;
 
         return (
             <div className="model__content">
@@ -165,14 +170,22 @@ class McInput extends React.Component {
                         <option value="doc" key="doc">Force document at once</option>
                     </select>
 
-                    {model in sliceSizes ? (<Fragment>
-                        <select onChange={this.handleLimitChange} value={limit}>
+                    {model in options ? (<Fragment>
+                        <select onChange={this.handleOptionChange("limit")} value={options[model].limit}>
                             <option value="1" key="1">The best matching slice only</option>
                             <option value="2" key="2">Use 2 best matching slices</option>
                             <option value="3" key="3">Use 3 best matching slices</option>
                             <option value="4" key="4">Use 4 best matching slices</option>
                             <option value="5" key="5">Use 5 best matching slices</option>
                         </select>
+                        <span> {model == "auto" ? "characters" : "paragraphs"} in a slice</span>
+                    </Fragment>) : null}
+                </div>
+
+            </div>
+        );
+
+/*
                         <input
                             className="form__option"
                             onChange={this.handleOptionChange}
@@ -180,12 +193,7 @@ class McInput extends React.Component {
                             required="true"
                             value={sliceSizes[model]}
                         />
-                        <span> {model == "auto" ? "characters" : "paragraphs"} in a slice</span>
-                    </Fragment>) : null}
-                </div>
-
-            </div>
-        );
+*/
     }
 }
 
@@ -353,14 +361,17 @@ class McWait extends React.Component {
   <McComponent /> Component
 *******************************************************************************/
 
-const defaultState = { terms: [], question: "", docs: [], more: null, expanded: null, tab: "search" };
+const
+    defaultState = { terms: [], question: "", docs: [], more: null, expanded: null, tab: "search" },
+    defaultOptions = { auto: { sliceSize: 50, sliceByteCount: 4096, limit: 1 }, "doc-slice": { sliceSize: 50, limit: 1 } };
 
 class _McComponent extends React.Component {
 
-    state = {...defaultState, model: "auto", sliceSizes: { auto: 4096, "doc-slice": 50 }, limit: 3}
+    state = {...defaultState, model: "auto", options: defaultOptions}
 
     predict( index ) {
-        const {question, docs, model, limit, sliceSizes} = this.state;
+        const {question, docs, model, options: allOpts} = this.state;
+        const {limit, ...options} = allOpts[model] || {}
 
         this.setState({ running: +new Date() });
 
@@ -368,7 +379,7 @@ class _McComponent extends React.Component {
             const {text} = docs[index];
 
             return post( `/predict${limit>1 && model!="doc"?"N":""}/${model}`,
-                          {question, doc: text.map( t => ({cpar: t}) ), sliceSize: sliceSizes[model], limit: limit <= 1 ? undefined : limit}
+                          {question, doc: text.map( t => ({cpar: t}) ), ...options, limit: limit <= 1 ? undefined : limit}
                     ).then(
                         prediction => {
                             console.log( prediction );
@@ -431,7 +442,17 @@ class _McComponent extends React.Component {
 
     load( page ) {
         get( `/data/v2/${page}` )
-            .then( content => this.setState( {...content, docs: [], expanded: null, tab: "search", lastSearchUrl: null} ) );
+            .then( ({sliceSizes, limit, options, ...content}) =>
+                this.setState( {
+                    ...content,
+                    docs: [], expanded: null, tab: "search", lastSearchUrl: null,
+                    // Auto-convert from sliceSizes/limit to options
+                    options: options || {
+                        auto: Object.assign( {}, defaultOptions.auto, sliceSizes && {sliceByteCount: sliceSizes.auto, limit} ),
+                        "doc-slice": Object.assign( {}, defaultOptions["doc-slice"], sliceSizes && {sliceSize: sliceSizes["doc-slice"], limit} )
+                    }
+                } )
+            );
     }
 
     save( page, data ) {
@@ -464,22 +485,22 @@ class _McComponent extends React.Component {
 
     componentDidUpdate() {
         const {match: {params: {page}}} = this.props;
-        const {terms, question, model, limit, sliceSizes} = this.state;
+        const {terms, question, model, options} = this.state;
 
         const searched = this.search();
 
         if( searched && !(page in {save: 1, new: 1}) )
-            searched.then( () => this.save( page, {terms, question, model, sliceSizes} ) );
+            searched.then( () => this.save( page, {terms, question, model, options} ) );
     }
 
     render() {
-      const {terms, docs, question, more, tab, expanded, running, model, limit, sliceSizes} = this.state;
+      const {terms, docs, question, more, tab, expanded, running, model, options} = this.state;
 
       return (
        <div className="pane model">
           <McWait running={running} />
           <PaneLeft>
-            <McInput mc={this} terms={terms} question={question} model={model} sliceSizes={sliceSizes} limit={limit} />
+            <McInput mc={this} terms={terms} question={question} model={model} options={options} />
           </PaneLeft>
           <PaneRight>
             <PaneSeparator>
