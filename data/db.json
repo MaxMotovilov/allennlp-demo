@@ -120,6 +120,19 @@
 				"auto": 4096,
 				"doc-slice": 50
 			}
+		},
+		"lg-dryer-clothes-still-dirty": {
+			"name": "LG Dryer Clothes Still Dirty",
+			"terms": [
+				"lg",
+				"DLEX3370"
+			],
+			"question": "Why are my clothes still dirty?",
+			"model": "auto",
+			"sliceSizes": {
+				"auto": 4096,
+				"doc-slice": 50
+			}
 		}
 	}
 }
