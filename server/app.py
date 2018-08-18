@@ -216,7 +216,7 @@ def make_app(build_dir: str = None) -> Flask:
             elif model_name == "auto":
                 slicer = SliceBySimilarityToQuery( paragraphs, req_data['question'] )
                 slice_byte_count = req_data.get( "sliceByteCount", 4096 ) # in characters
-                drop_off = req_date.get( "atLeast", None )
+                drop_off = req_data.get( "atLeast", None )
 
             else: # if model_name in {"doc-slice-mp", "section-mp"}:
                 if model_name == "doc-slice-mp":
@@ -244,7 +244,7 @@ def make_app(build_dir: str = None) -> Flask:
                 elif verb == "predictN": # and model_name in {"auto", "doc-slice"}
                     batch_size = req_data.get( "limit", 3 )
                     if model_name == "auto":
-                        best, scores = slicer.best( batch_size, drop_off, slice_size, slice_byte_size )
+                        best, scores = slicer.best( batch_size, drop_off, slice_size, slice_byte_count )
                     else: # if model_name == "doc-slice":
                         best, scores = takeTopN( slice_scores, batch_size, lambda i: (i, i+slice_size) )
 
@@ -258,7 +258,7 @@ def make_app(build_dir: str = None) -> Flask:
                         best, scores = max(enumerate(slice_scores), key = lambda e: e[1])
                         best = (best, best+slice_size)
                     else: # if model_name == "auto"
-                        best, scores = slicer.best( 1, drop_off, slice_size, slice_byte_size )
+                        best, scores = slicer.best( 1, drop_off, slice_size, slice_byte_count )
 
                     logger.info("Best slice at %s: %s", best[0], scores)
 
