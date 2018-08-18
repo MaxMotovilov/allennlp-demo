@@ -575,10 +575,18 @@ form {
 	margin-left: 1em;
 }
 
-.form__field input[type=text].form__option {
+.form__field div {
+	margin-top: 1em;
+}
+
+.form__field div input[type=text].form__option {
 	display: inline-block;
 	margin: 0 1em;
 	width: 5em;
+}
+
+.form__field div input[type=text].form__option:first-child {
+	margin-left: 0;
 }
 
 .form__field #input--mc-term {

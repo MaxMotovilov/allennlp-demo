@@ -107,7 +107,7 @@ class McInput extends React.Component {
     }
 
     handleOptionChange =
-        prop =>
+        (prop, cvt=parseInt) =>
             ({target: {value}}) => {
                 const {mc, model} = this.props;
                 mc.setState(
@@ -115,7 +115,7 @@ class McInput extends React.Component {
                         ...state,
                         options: {
                             ...options,
-                            [model]: { ...options[model], [prop]: parseInt(value) }
+                            [model]: { ...options[model], [prop]: value ? cvt(value) : null }
                         }
                     })
                 );
@@ -165,7 +165,7 @@ class McInput extends React.Component {
                 <div className="form__field">
                     <label>Options</label>
                     <select onChange={this.handleModelChange} value={model}>
-                        <option value="auto" key="auto">Slice based on character count</option>
+                        <option value="auto" key="auto">Slice based on word embeddings</option>
                         <option value="doc-slice" key="doc-slice">Slice based on paragraph count</option>
                         <option value="doc" key="doc">Force document at once</option>
                     </select>
@@ -178,7 +178,44 @@ class McInput extends React.Component {
                             <option value="4" key="4">Use 4 best matching slices</option>
                             <option value="5" key="5">Use 5 best matching slices</option>
                         </select>
-                        <span> {model == "auto" ? "characters" : "paragraphs"} in a slice</span>
+                        <div>
+                            {"sliceSize" in options[model] ? (
+                                <Fragment>
+                                    <input
+                                        className="form__option"
+                                        onChange={this.handleOptionChange("sliceSize")}
+                                        type="text"
+                                        required="true"
+                                        value={options[model].sliceSize || ""}
+                                    />
+                                    <span>paragraphs</span>
+                                </Fragment>
+                            ):null}
+                            {"sliceByteCount" in options[model] ? (
+                                <Fragment>
+                                    <input
+                                        className="form__option"
+                                        onChange={this.handleOptionChange("sliceByteCount")}
+                                        type="text"
+                                        required="true"
+                                        value={options[model].sliceByteCount || ""}
+                                    />
+                                    <span>bytes</span>
+                                </Fragment>
+                            ):null}
+                            {"atLeast" in options[model] ? (
+                                <Fragment>
+                                    <input
+                                        className="form__option"
+                                        onChange={this.handleOptionChange("atLeast",parseFloat)}
+                                        type="text"
+                                        required="true"
+                                        value={options[model].atLeast || ""}
+                                    />
+                                    <span>score drop-off</span>
+                                </Fragment>
+                            ):null}
+                        </div>
                     </Fragment>) : null}
                 </div>
 
@@ -186,13 +223,7 @@ class McInput extends React.Component {
         );
 
 /*
-                        <input
-                            className="form__option"
-                            onChange={this.handleOptionChange}
-                            type="text"
-                            required="true"
-                            value={sliceSizes[model]}
-                        />
+
 */
     }
 }
@@ -363,7 +394,7 @@ class McWait extends React.Component {
 
 const
     defaultState = { terms: [], question: "", docs: [], more: null, expanded: null, tab: "search" },
-    defaultOptions = { auto: { sliceSize: 50, sliceByteCount: 4096, limit: 1 }, "doc-slice": { sliceSize: 50, limit: 1 } };
+    defaultOptions = { auto: { sliceSize: 50, sliceByteCount: 4096, limit: 1, atLeast: null }, "doc-slice": { sliceSize: 50, limit: 1 } };
 
 const startOf = ({range: [[from]]}) => from;
 
