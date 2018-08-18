@@ -365,6 +365,8 @@ const
     defaultState = { terms: [], question: "", docs: [], more: null, expanded: null, tab: "search" },
     defaultOptions = { auto: { sliceSize: 50, sliceByteCount: 4096, limit: 1 }, "doc-slice": { sliceSize: 50, limit: 1 } };
 
+const startOf = ({range: [[from]]}) => from;
+
 class _McComponent extends React.Component {
 
     state = {...defaultState, model: "auto", options: defaultOptions}
@@ -385,9 +387,11 @@ class _McComponent extends React.Component {
                             console.log( prediction );
                             if( !Array.isArray(prediction) )
                                 prediction = [prediction];
+                            else
+                                prediction.sort( (a, b) => startOf(a)-startOf(b) );
                             this.setState({
                                 docs: docs.map(
-                                    (doc, i) => index === i ? {...doc, prediction} : doc
+                                    (doc, i) => index === i ? {...doc, prediction } : doc
                                 ),
                                 running: null,
                                 tab: prediction.length ? "text" : "search",
