@@ -108,14 +108,14 @@ class McInput extends React.Component {
 
     handleOptionChange =
         (prop, cvt=parseInt) =>
-            ({target: {value}}) => {
+            ({target: {value, checked}}) => {
                 const {mc, model} = this.props;
                 mc.setState(
                     ({options, ...state}) => ({
                         ...state,
                         options: {
                             ...options,
-                            [model]: { ...options[model], [prop]: value ? cvt(value) : null },
+                            [model]: { ...options[model], [prop]: value ? cvt(checked == null ? value : checked) : null },
                         },
                         update: true
                     })
@@ -220,7 +220,7 @@ class McInput extends React.Component {
                                 <label>
                                     <input
                                         type="checkbox"
-                                        onChange={this.handleOptionChange("termMap",x => x=="on")}
+                                        onChange={this.handleOptionChange("termMap",x => x)}
                                         checked={!!options[model].termMap}
                                     />
                                     Include term map
@@ -272,7 +272,7 @@ const highlightAnswer =
             return text.map(
                         (t, i) => t ? (
                             <p key={i + offset}>
-                                {margin && margin(i+offset)}
+                                {margin ? margin(i+offset) : null}
                                 {prediction ? highlight(t, i + offset) : t}
                             </p>
                         ) : null
@@ -331,7 +331,7 @@ const McText = ({doc: {text, prediction, termMap, terms}, className}) => {
                     last = end+1;
                     if( begin > from )
                         list.push.apply( list, text.slice( from, begin ).map( plain(from) ) );
-                    list.push.apply( list, highlight( text.slice(begin, end+1), prediction, begin, index++, margin ) );
+                    list.push.apply( list, highlight( text.slice(begin, end+1), prediction, begin, index++, termMap.length && margin ) );
                     return list;
                 }, []
             ).concat(
@@ -528,7 +528,7 @@ class _McComponent extends React.Component {
     }
 
     save( page, data ) {
-        put( `/data/v2/${page}`, data ).then( () => this.setState({ update: false }) );
+        return put( `/data/v2/${page}`, data ).then( () => this.setState({ update: false }) );
     }
 
     componentWillMount() {
@@ -566,7 +566,13 @@ class _McComponent extends React.Component {
         if( searched && !(page in {save: 1, new: 1}) )
             searched.then( save );
         else if( update )
-            save();
+            save().then( () => this.setState(
+                ({docs, termMap, terms, ...state}) => ({
+                    ...state,
+                    tab: "search",
+                    docs: docs.map( ({prediction, ...rest}) => rest )
+                })
+            ) );
     }
 
     render() {

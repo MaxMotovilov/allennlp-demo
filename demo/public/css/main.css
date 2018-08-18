@@ -541,8 +541,11 @@ form {
 
 .form__field label {
   display: block;
-  font-weight: 600;
   font-size: 1.125em
+}
+
+.form__field>label {
+  font-weight: 600;
 }
 
 .form__field label+* {
@@ -1355,6 +1358,14 @@ svg {
   padding: .1875em;
   margin: 0 .125em;
   position: relative;
+}
+
+.passage__answer:first-child {
+	margin-left: 0;
+}
+
+.passage__answer:last-child {
+	margin-right: 0;
 }
 
 .passage__answer:hover:before {
