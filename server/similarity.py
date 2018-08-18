@@ -131,7 +131,6 @@ class SliceBySimilarityToQuery(object):
             q = sorted( enumWindows(), key=score )
 
         result = []
-        print(q)
 
         while len(q) > 0 and len(result) < top:
             next = q.pop()
@@ -149,7 +148,6 @@ class SliceBySimilarityToQuery(object):
             ), key=score)
 
             result.append( next )
-            print( result, q )
 
         return result, list( map( score, result ) )
 

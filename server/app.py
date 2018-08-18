@@ -259,6 +259,8 @@ def make_app(build_dir: str = None) -> Flask:
                         best = (best, best+slice_size)
                     else: # if model_name == "auto"
                         best, scores = slicer.best( 1, drop_off, slice_size, slice_byte_count )
+                        best = best[0]
+                        scores = scores[0]
 
                     logger.info("Best slice at %s: %s", best[0], scores)
 
