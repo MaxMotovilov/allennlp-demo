@@ -115,15 +115,16 @@ class McInput extends React.Component {
                         ...state,
                         options: {
                             ...options,
-                            [model]: { ...options[model], [prop]: value ? cvt(value) : null }
-                        }
+                            [model]: { ...options[model], [prop]: value ? cvt(value) : null },
+                        },
+                        update: true
                     })
                 );
             }
 
     handleModelChange = ({target: {value: model}}) => {
         if( model )
-            this.props.mc.setState({ model });
+            this.props.mc.setState({ model, update: true });
     }
 
     render() {
@@ -215,6 +216,16 @@ class McInput extends React.Component {
                                     <span>score drop-off</span>
                                 </Fragment>
                             ):null}
+                            {"termMap" in options[model] ? (
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        onChange={this.handleOptionChange("termMap",x => x=="on")}
+                                        checked={!!options[model].termMap}
+                                    />
+                                    Include term map
+                                </label>
+                            ):null}
                         </div>
                     </Fragment>) : null}
                 </div>
@@ -235,7 +246,7 @@ class McInput extends React.Component {
 
 const highlightAnswer =
     makeHighlight =>
-        (text, prediction, offset=0, index) => {
+        (text, prediction, offset=0, index, margin) => {
             function highlight( text, n ) {
                 const {range: [[begin, beginPos], [end, endPos]]} = prediction;
                 return n < begin || n > end ? text :
@@ -261,6 +272,7 @@ const highlightAnswer =
             return text.map(
                         (t, i) => t ? (
                             <p key={i + offset}>
+                                {margin && margin(i+offset)}
                                 {prediction ? highlight(t, i + offset) : t}
                             </p>
                         ) : null
@@ -269,10 +281,10 @@ const highlightAnswer =
 
 const setHash = elt => elt && (window.location.hash = window.location.hash || elt.id);
 
-const McText = ({doc: {text, prediction}, className}) => {
+const McText = ({doc: {text, prediction, termMap, terms}, className}) => {
     let last = 0, index = 0, last_index;
 
-    const plain = offset => (t, i) => (<p key={i + offset}>{t}</p>);
+    const plain = offset => (t, i) => (<p key={i + offset}>{termMap.length ? margin(i+offset) : null}{t}</p>);
 
     const highlight = highlightAnswer(
         (text, index) => {
@@ -287,6 +299,30 @@ const McText = ({doc: {text, prediction}, className}) => {
         }
     );
 
+    const sum = v => v.reduce( (a,b) => a+b );
+    const maxScore = termMap.length && Math.max.apply( null, termMap.map( sum ) );
+
+    const scale =
+        score => {
+            const rel = score / maxScore;
+            return Math.round( rel < 0.1 ? 0 : rel >= 0.9 ? 100 : (100/0.8) * (rel-0.1) );
+        }
+
+    const colorScale =
+        score => {
+            const pc = scale(score);
+            return `rgb(${100-pc}%,100%,${100-pc}%)`
+        }
+
+    const margin = i => (
+        <Fragment>
+            <div className="margin" style={{backgroundColor: colorScale(sum(termMap[i]))}} />
+            <div className="margin-tip">
+                {terms.map( (t,j) => `${t}: ${termMap[i][j]}` ).join( ', ' )}
+            </div>
+        </Fragment>
+    );
+
     return (
         <div key="text" className={"pane__text " + className}>
             {prediction.reduce(
@@ -295,7 +331,7 @@ const McText = ({doc: {text, prediction}, className}) => {
                     last = end+1;
                     if( begin > from )
                         list.push.apply( list, text.slice( from, begin ).map( plain(from) ) );
-                    list.push.apply( list, highlight( text.slice(begin, end+1), prediction, begin, index++ ) );
+                    list.push.apply( list, highlight( text.slice(begin, end+1), prediction, begin, index++, margin ) );
                     return list;
                 }, []
             ).concat(
@@ -394,7 +430,7 @@ class McWait extends React.Component {
 
 const
     defaultState = { terms: [], question: "", docs: [], more: null, expanded: null, tab: "search" },
-    defaultOptions = { auto: { sliceSize: 50, sliceByteCount: 4096, limit: 1, atLeast: null }, "doc-slice": { sliceSize: 50, limit: 1 } };
+    defaultOptions = { auto: { sliceSize: 50, sliceByteCount: 4096, limit: 1, atLeast: null, termMap: false }, "doc-slice": { sliceSize: 50, limit: 1 } };
 
 const startOf = ({range: [[from]]}) => from;
 
@@ -414,15 +450,16 @@ class _McComponent extends React.Component {
             return post( `/predict${limit>1 && model!="doc"?"N":""}/${model}`,
                           {question, doc: text.map( t => ({cpar: t}) ), ...options, limit: limit <= 1 ? undefined : limit}
                     ).then(
-                        prediction => {
-                            console.log( prediction );
-                            if( !Array.isArray(prediction) )
-                                prediction = [prediction];
+                        response => {
+                            console.log( response );
+                            let {prediction, termMap=[], terms=[]} = response;
+                            if( !prediction )
+                                prediction = [response];
                             else
                                 prediction.sort( (a, b) => startOf(a)-startOf(b) );
                             this.setState({
                                 docs: docs.map(
-                                    (doc, i) => index === i ? {...doc, prediction } : doc
+                                    (doc, i) => index === i ? {...doc, prediction, termMap, terms } : doc
                                 ),
                                 running: null,
                                 tab: prediction.length ? "text" : "search",
@@ -491,7 +528,7 @@ class _McComponent extends React.Component {
     }
 
     save( page, data ) {
-        put( `/data/v2/${page}`, data );
+        put( `/data/v2/${page}`, data ).then( () => this.setState({ update: false }) );
     }
 
     componentWillMount() {
@@ -520,12 +557,16 @@ class _McComponent extends React.Component {
 
     componentDidUpdate() {
         const {match: {params: {page}}} = this.props;
-        const {terms, question, model, options} = this.state;
+        const {terms, question, model, options, update} = this.state;
 
         const searched = this.search();
 
+        const save = () => this.save( page, {terms, question, model, options} )
+
         if( searched && !(page in {save: 1, new: 1}) )
-            searched.then( () => this.save( page, {terms, question, model, options} ) );
+            searched.then( save );
+        else if( update )
+            save();
     }
 
     render() {

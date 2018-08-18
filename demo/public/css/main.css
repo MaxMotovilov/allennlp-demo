@@ -1243,10 +1243,32 @@ svg {
 	box-sizing: border-box;
 	padding: 0.5ex 0;
 	margin: 0;
+	position: relative;
 }
 
 .pane__text p.pane__odd {
 	background-color: #fff8f0;
+}
+
+.pane__text p .margin {
+	position: absolute;
+	box-sizing: border-box;
+	border-top: 1px solid white;
+	border-bottom: 1px solid white;
+	height: 100%;
+	width: 1ex;
+	margin-left: -1.5ex;
+}
+
+.pane__text p .margin-tip {
+	position: absolute;
+	display: none;
+	background-color: yellow;
+	z-index: 10;
+}
+
+.pane__text p .margin:hover+.margin-tip {
+	display: block;
 }
 
 .search__result {
