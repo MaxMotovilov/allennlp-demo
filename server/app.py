@@ -244,7 +244,7 @@ def make_app(build_dir: str = None) -> Flask:
                 elif verb == "predictN": # and model_name in {"auto", "doc-slice"}
                     batch_size = req_data.get( "limit", 3 )
                     if model_name == "auto":
-                        best, scores = slicer.best( batch_size, drop_off, slice_size, slice_byte_count )
+                        best, scores, term_map, terms = slicer.best( batch_size, drop_off, slice_size, slice_byte_count )
                     else: # if model_name == "doc-slice":
                         best, scores = takeTopN( slice_scores, batch_size, lambda i: (i, i+slice_size) )
 
@@ -258,7 +258,7 @@ def make_app(build_dir: str = None) -> Flask:
                         best, scores = max(enumerate(slice_scores), key = lambda e: e[1])
                         best = (best, best+slice_size)
                     else: # if model_name == "auto"
-                        best, scores = slicer.best( 1, drop_off, slice_size, slice_byte_count )
+                        best, scores, term_map, terms = slicer.best( 1, drop_off, slice_size, slice_byte_count )
                         best = best[0]
                         scores = scores[0]
 
@@ -298,6 +298,8 @@ def make_app(build_dir: str = None) -> Flask:
         else: # if model_name == "baseline":
             answer = paragraphs[best_section]
 
+        result = None
+
         if model_name == "doc":
             char_range = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs )
         elif model_name == "baseline":
@@ -311,18 +313,26 @@ def make_app(build_dir: str = None) -> Flask:
                 f, t = map_span( tuple( results['best_span'] ), results['passage_tokens'], paragraphs[start:end] )
                 char_range = (add_par(f, start), add_par(t, start))
             else: # if verb == "predictN":
-                return jsonify([
-                    { 'text': answer, 'range': (add_par(f, start), add_par(t, start)) }
-                    for answer, start, (f, t) in (
-                        (result['best_span_str'], start, map_span( tuple( result['best_span'] ), result['passage_tokens'], paragraphs[start:end] ))
-                        for result, (start, end) in zip(results, best)
-                    )
-                ])
+                result = {
+                    'prediction': [
+                        { 'text': answer, 'range': (add_par(f, start), add_par(t, start)) }
+                            for answer, start, (f, t) in (
+                                (result['best_span_str'], start, map_span( tuple( result['best_span'] ), result['passage_tokens'], paragraphs[start:end] ))
+                                for result, (start, end) in zip(results, best)
+                            )
+                    ]
+                }
 
-        return jsonify({
+        result = {
             'text': answer,
             'range': char_range
-        })
+        } if result is None else result
+
+        if model_name == "auto" and req_data.get( "termMap", False ):
+            result['termMap'] = term_map
+            result['terms'] = terms
+
+        return jsonify(result)
 
     return app
 

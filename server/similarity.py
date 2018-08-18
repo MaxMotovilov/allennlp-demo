@@ -31,7 +31,7 @@ class SliceBySimilarityToQuery(object):
         self.byte_counts = np.asarray( [ len(p) for p in paragraphs ], dtype=np.int32 )
 
         paragraphs = nlp.pipe( chain( (query,), paragraphs ) )
-        query = _withoutStopWords( next(paragraphs) )
+        self.query = _withoutStopWords( next(paragraphs) )
 
         paragraphs = [
             tuple(
@@ -39,8 +39,8 @@ class SliceBySimilarityToQuery(object):
                     q.similarity(p) if q.has_vector and p.has_vector else (
                         1.0 if q.lemma_.lower() == p.lemma_.lower() else 0.0
                     ) for p in par
-                ) for q in query
-            ) if len(par) > 0 else tuple( repeat( 0, len(query) ) )
+                ) for q in self.query
+            ) if len(par) > 0 else tuple( repeat( 0, len(self.query) ) )
                 for par in (
                     _withoutStopWords(par) for par in paragraphs
                 )
@@ -55,7 +55,7 @@ class SliceBySimilarityToQuery(object):
                 paragraphs[:,i],
                 np.mean( paragraphs[:,i] ),
                 np.std( paragraphs[:,i] )
-            ) if query[i].has_vector else paragraphs[:,i]
+            ) if self.query[i].has_vector else paragraphs[:,i]
                 for i in range(paragraphs.shape[1])
         ], order='C' ) )
 
@@ -149,5 +149,5 @@ class SliceBySimilarityToQuery(object):
 
             result.append( next )
 
-        return result, list( map( score, result ) )
+        return result, list( map( score, result ) ), self.paragraphs.tolist(), [q.lemma_.lower() for q in self.query]
 
