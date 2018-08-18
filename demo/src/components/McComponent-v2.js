@@ -129,7 +129,7 @@ class McInput extends React.Component {
     render() {
 
         const {newTerm} = this.state;
-        const {question, terms, mc, model, limit, options} = this.props;
+        const {question, terms, mc, model, options} = this.props;
 
         return (
             <div className="model__content">
