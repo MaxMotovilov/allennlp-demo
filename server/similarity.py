@@ -16,12 +16,10 @@ def _withoutStopWords( tokens ):
     return [t for t in tokens if not t.lemma_.lower() in nlp.Defaults.stop_words and not t.is_punct]
 
 class SliceBySimilarityToQuery(object):
-    def __init__(self, paragraphs, query, reduce='max', norm='L1', amplify='positive-2-stdev'):
+    def __init__(self, paragraphs, query, amplify='positive-2-stdev'):
         self.timings = [perf_counter()]
         amplify = re.fullmatch( r'(positive|both)-(\d+)-stdev', amplify )
         assert( amplify is not None )
-        assert( reduce == 'max' )
-        assert( norm == 'L1' )
 
         width = float( amplify[2] )
 
@@ -44,7 +42,7 @@ class SliceBySimilarityToQuery(object):
 
         paragraphs = [
             tuple(
-                max( # reduce=max
+                max(
                     similarity(q, p) if q.has_vector and p.has_vector else (
                         1.0 if q.lemma_.lower() == p.lemma_.lower() else 0.0
                     ) for p in par
@@ -84,35 +82,7 @@ class SliceBySimilarityToQuery(object):
         if count is None:
             count = len(self.paragraphs)
 
-        def pairwiseMultiples(x, combine):
-            mult = 1
-            yield x
-            while 2*mult <= count:
-                if x.shape[0] % 2 != 0:
-                    x = np.resize( x, (x.shape[0]+1, x.shape[1]) )
-                x = combine(x[::2], x[1::2])
-                mult *= 2
-                yield x
-
-        vec_mults = list( pairwiseMultiples(self.paragraphs, np.maximum) ) # reduce=max
-
-        self.timings.append( perf_counter() )
-
-        def enumMultiples(r):
-            start, end = r
-            i = 0
-            while start < end:
-                if start & 1 or start+1 == end:
-                    yield (i, start)
-                    start += 1
-                if end & 1 and start < end:
-                    end -= 1
-                    yield (i, end)
-                start >>= 1
-                end >>= 1
-                i += 1
-
-        score = lambda r: reduce( np.maximum, (vec_mults[i][j] for i,j in enumMultiples(r)) ).sum() # reduce=max, norm=L1
+        score = lambda r: self.paragraphs[r[0]:r[1]].max(0).sum()
 
         def enumWindows():
             bc = -1
