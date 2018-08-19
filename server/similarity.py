@@ -3,6 +3,7 @@ import numpy as np
 
 from itertools import chain, repeat
 from functools import reduce
+from time import perf_counter
 
 nlp = spacy.load( 'en_core_web_md', disable=['parser', 'tagger', 'ner'] )
 
@@ -16,6 +17,7 @@ def _withoutStopWords( tokens ):
 
 class SliceBySimilarityToQuery(object):
     def __init__(self, paragraphs, query, reduce='max', norm='L1', amplify='positive-2-stdev'):
+        self.timings = [perf_counter()]
         amplify = re.fullmatch( r'(positive|both)-(\d+)-stdev', amplify )
         assert( amplify is not None )
         assert( reduce == 'max' )
@@ -46,6 +48,8 @@ class SliceBySimilarityToQuery(object):
                 )
         ]
 
+        self.timings.append( perf_counter() )
+
         # Build a row-of-columns array for faster processing
         paragraphs = np.asarray( paragraphs, dtype=np.float32, order='F' )
 
@@ -61,6 +65,8 @@ class SliceBySimilarityToQuery(object):
 
         # Generalized IDF weighting
         self.paragraphs *= np.log( float(self.paragraphs.shape[0]) / (1 + np.sum( self.paragraphs, 0 )) )
+
+        self.timings.append( perf_counter() )
 
     def best(self, top=1, dropOff=None, count=None, byteCount=None ):
         """ Finds and returns up to `top' best slices ordered by decreasing score. """
@@ -82,6 +88,8 @@ class SliceBySimilarityToQuery(object):
                 yield x
 
         vec_mults = list( pairwiseMultiples(self.paragraphs, np.maximum) ) # reduce=max
+
+        self.timings.append( perf_counter() )
 
         def enumMultiples(r):
             start, end = r
@@ -148,6 +156,8 @@ class SliceBySimilarityToQuery(object):
             ), key=score)
 
             result.append( next )
+
+        self.timings.append( perf_counter() )
 
         return result, list( map( score, result ) ), self.paragraphs.tolist(), [q.lemma_.lower() for q in self.query]
 

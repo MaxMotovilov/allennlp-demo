@@ -11,7 +11,7 @@ import os
 import sys
 import time
 from functools import lru_cache
-from itertools import groupby, islice
+from itertools import groupby, islice, tee
 
 from flask import Flask, request, Response, jsonify, send_file, send_from_directory
 from flask_cors import CORS
@@ -110,6 +110,11 @@ def window(seq, n=2):
     for elem in it:
         result = result[1:] + (elem,)
         yield result
+
+def pairwise(iterable):
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a,b)
 
 TFIDF_SCORE_CUTOFF = 0.5
 
@@ -263,6 +268,8 @@ def make_app(build_dir: str = None) -> Flask:
                         scores = scores[0]
 
                     logger.info("Best slice at %s: %s", best[0], scores)
+
+        logger.info( "Slicer timings: %s", [ b-a for a,b in pairwise( slicer.timings ) ] )
 
         if verb == "predictN":
             bidaf_data = [ dict(bidaf_data) for i in range(len(best)) ]
