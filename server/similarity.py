@@ -35,10 +35,17 @@ class SliceBySimilarityToQuery(object):
         paragraphs = nlp.pipe( chain( (query,), paragraphs ) )
         self.query = _withoutStopWords( next(paragraphs) )
 
+        sim_cache = dict()
+        def similarity(q,p):
+            key = (max(q.orth, p.orth), min(q.orth, p.orth))
+            if key not in sim_cache:
+                sim_cache[key] = q.similarity(p)
+            return sim_cache[key]
+
         paragraphs = [
             tuple(
                 max( # reduce=max
-                    q.similarity(p) if q.has_vector and p.has_vector else (
+                    similarity(q, p) if q.has_vector and p.has_vector else (
                         1.0 if q.lemma_.lower() == p.lemma_.lower() else 0.0
                     ) for p in par
                 ) for q in self.query
