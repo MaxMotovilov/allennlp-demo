@@ -1,11 +1,17 @@
 import spacy, re
 import numpy as np
 
-from itertools import chain, repeat
+from itertools import chain, repeat, tee, accumulate
 from functools import reduce
 from time import perf_counter
+from math import exp, log
 
 nlp = spacy.load( 'en_core_web_md', disable=['parser', 'tagger', 'ner'] )
+
+def pairwise(iterable):
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a,b)
 
 def _amplify( x, mean, sigma ):
     e = np.exp( (x-mean)**2 / (2*sigma**2) )
@@ -16,7 +22,7 @@ def _withoutStopWords( tokens ):
     return [t for t in tokens if not t.lemma_.lower() in nlp.Defaults.stop_words and not t.is_punct]
 
 class SliceBySimilarityToQuery(object):
-    def __init__(self, paragraphs, query, amplify='positive-2-stdev'):
+    def __init__(self, paragraphs, query, amplify='positive-2-stdev', proximity=10.0):
         self.timings = [perf_counter()]
         amplify = re.fullmatch( r'(positive|both)-(\d+)-stdev', amplify )
         assert( amplify is not None )
@@ -40,18 +46,44 @@ class SliceBySimilarityToQuery(object):
                 sim_cache[key] = q.similarity(p)
             return sim_cache[key]
 
-        paragraphs = [
-            tuple(
-                max(
-                    similarity(q, p) if q.has_vector and p.has_vector else (
-                        1.0 if q.lemma_.lower() == p.lemma_.lower() else 0.0
-                    ) for p in par
-                ) for q in self.query
-            ) if len(par) > 0 else tuple( repeat( 0, len(self.query) ) )
+        paragraphs, lengths = list(zip( *(
+            (
+                tuple(
+                    max(
+                        similarity(q, p) if q.has_vector and p.has_vector else (
+                            1.0 if q.lemma_.lower() == p.lemma_.lower() else 0.0
+                        ) for p in par
+                    ) for q in self.query
+                ) if len(par) > 0 else tuple( repeat( 0, len(self.query) ) ),
+                len(par)
+            )
                 for par in (
                     _withoutStopWords(par) for par in paragraphs
                 )
-        ]
+        )))
+
+        self.timings.append( perf_counter() )
+
+        distances = [ 0.5*(a+b) for a,b in pairwise(lengths) ]
+        log2 = log(2.0)
+
+        def row( l ):
+            s = 0
+            yield 1
+            for v in l:
+                if s >= proximity*4:
+                    yield 0
+                else:
+                    s += v
+                    # toss anything < 2^-16
+                    yield exp(-log2*(s/proximity)**2)
+
+        attenuation = np.asarray( [
+            list( chain( repeat(0, i), row( distances[i:] ) ) )
+               for i in range(1+len(distances))
+        ], dtype=np.float32 )
+
+        self.attenuation = attenuation + attenuation.T - np.diag(attenuation.diagonal())
 
         self.timings.append( perf_counter() )
 
@@ -82,7 +114,13 @@ class SliceBySimilarityToQuery(object):
         if count is None:
             count = len(self.paragraphs)
 
-        score = lambda r: self.paragraphs[r[0]:r[1]].max(0).sum()
+#        score = lambda r: self.paragraphs[r[0]:r[1]].max(0).sum()
+
+        def score(r):
+            f, t = r
+            vectors = self.paragraphs[f:t]
+            attenuation = self.attenuation[f:t,f:t]
+            return np.amax( np.einsum( 'ij,jk->kij', attenuation, vectors ), axis=(2) ).sum()
 
         def enumWindows():
             bc = -1
