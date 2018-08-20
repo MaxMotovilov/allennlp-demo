@@ -269,7 +269,8 @@ def make_app(build_dir: str = None) -> Flask:
 
                     logger.info("Best slice at %s: %s", best[0], scores)
 
-        logger.info( "Slicer timings: %s", [ b-a for a,b in pairwise( slicer.timings ) ] )
+                if model_name == "auto":
+                    logger.info( "Slicer timings: %s", [ b-a for a,b in pairwise( slicer.timings ) ] )
 
         if verb == "predictN":
             bidaf_data = [ dict(bidaf_data) for i in range(len(best)) ]
