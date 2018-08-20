@@ -107,20 +107,25 @@ class McInput extends React.Component {
     }
 
     handleOptionChange =
-        (prop, cvt=parseInt) =>
-            ({target: {value, checked}}) => {
-                const {mc, model} = this.props;
-                mc.setState(
-                    ({options, ...state}) => ({
-                        ...state,
-                        options: {
-                            ...options,
-                            [model]: { ...options[model], [prop]: value ? cvt(checked == null ? value : checked) : null },
-                        },
-                        update: true
-                    })
-                );
-            }
+        (prop, cvt=parseInt) => ({target: {value}}) => this.setOptionTo( prop, value ? cvt(value) : null );
+
+    handleCheckBoxChange =
+        prop => ({target: {checked}}) => this.setOptionTo(prop, checked);
+
+    setOptionTo =
+        (prop, value) => {
+            const {mc, model} = this.props;
+            mc.setState(
+                ({options, ...state}) => ({
+                    ...state,
+                    options: {
+                        ...options,
+                        [model]: { ...options[model], [prop]: value },
+                    },
+                    update: true
+                })
+            );
+        }
 
     handleModelChange = ({target: {value: model}}) => {
         if( model )
@@ -220,7 +225,7 @@ class McInput extends React.Component {
                                 <label>
                                     <input
                                         type="checkbox"
-                                        onChange={this.handleOptionChange("termMap",x => x)}
+                                        onChange={this.handleCheckBoxChange("termMap")}
                                         checked={!!options[model].termMap}
                                     />
                                     Include term map
