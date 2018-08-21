@@ -339,6 +339,10 @@ def make_app(build_dir: str = None) -> Flask:
         if model_name == "auto" and req_data.get( "termMap", False ):
             result['termMap'] = term_map
             result['terms'] = terms
+            result['slices'] = [
+                { 'score': float(score), 'range': r }
+                    for score, r in zip(scores, best)
+            ]
 
         return jsonify(result)
 
