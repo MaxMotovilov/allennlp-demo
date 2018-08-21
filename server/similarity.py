@@ -120,7 +120,7 @@ class SliceBySimilarityToQuery(object):
             f, t = r
             vectors = self.paragraphs[f:t]
             attenuation = self.attenuation[f:t,f:t]
-            return np.amax( np.einsum( 'ij,jk->kij', attenuation, vectors ), axis=(2) ).sum()
+            return np.amax( np.einsum( 'ij,jk->ij', attenuation, vectors ), axis=(1) ).sum()
 
         def enumWindows():
             bc = -1
