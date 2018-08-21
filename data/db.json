@@ -56,6 +56,18 @@
 			"sliceSizes": {
 				"auto": 4096,
 				"doc-slice": 50
+			},
+			"options": {
+				"auto": {
+					"sliceSize": 10,
+					"sliceByteCount": 4096,
+					"atLeast": null,
+					"termMap": false,
+					"limit": 1
+				},
+				"doc-slice": {
+					"sliceSize": 50
+				}
 			}
 		},
 		"hp-officejet": {
@@ -68,6 +80,18 @@
 			"sliceSizes": {
 				"auto": 8192,
 				"doc-slice": 500
+			},
+			"options": {
+				"auto": {
+					"sliceSize": 10,
+					"sliceByteCount": 4096,
+					"atLeast": null,
+					"termMap": false,
+					"limit": 1
+				},
+				"doc-slice": {
+					"sliceSize": 500
+				}
 			}
 		},
 		"samsung-fridge-icemaker": {
@@ -81,6 +105,18 @@
 			"sliceSizes": {
 				"auto": 4096,
 				"doc-slice": 50
+			},
+			"options": {
+				"auto": {
+					"sliceSize": 10,
+					"sliceByteCount": 4096,
+					"limit": 2,
+					"atLeast": null,
+					"termMap": false
+				},
+				"doc-slice": {
+					"sliceSize": 50
+				}
 			}
 		},
 		"whirlpool-washer-garment-mesh": {
@@ -93,6 +129,18 @@
 			"sliceSizes": {
 				"auto": 4096,
 				"doc-slice": 50
+			},
+			"options": {
+				"auto": {
+					"sliceSize": 10,
+					"sliceByteCount": 4096,
+					"limit": 2,
+					"atLeast": null,
+					"termMap": false
+				},
+				"doc-slice": {
+					"sliceSize": 50
+				}
 			}
 		},
 		"lg-refrigerator-bad-odor": {
@@ -106,6 +154,18 @@
 			"sliceSizes": {
 				"auto": 4096,
 				"doc-slice": 50
+			},
+			"options": {
+				"auto": {
+					"sliceSize": 10,
+					"sliceByteCount": 4096,
+					"atLeast": null,
+					"termMap": false,
+					"limit": 3
+				},
+				"doc-slice": {
+					"sliceSize": 50
+				}
 			}
 		},
 		"dell-xps-13-ssd": {
@@ -119,6 +179,17 @@
 			"sliceSizes": {
 				"auto": 4096,
 				"doc-slice": 50
+			},
+			"options": {
+				"auto": {
+					"sliceSize": 50,
+					"sliceByteCount": 4096,
+					"atLeast": null,
+					"termMap": false
+				},
+				"doc-slice": {
+					"sliceSize": 50
+				}
 			}
 		},
 		"lg-dryer-clothes-still-dirty": {
@@ -132,6 +203,80 @@
 			"sliceSizes": {
 				"auto": 4096,
 				"doc-slice": 50
+			},
+			"options": {
+				"auto": {
+					"sliceSize": 50,
+					"sliceByteCount": 4096,
+					"atLeast": null,
+					"termMap": false
+				},
+				"doc-slice": {
+					"sliceSize": 50
+				}
+			}
+		},
+		"new": {
+			"terms": [
+				"vitamix"
+			],
+			"question": "What is button 2 pre-set program?",
+			"model": "auto",
+			"options": {
+				"auto": {
+					"sliceSize": 50,
+					"sliceByteCount": 4096,
+					"limit": 3,
+					"atLeast": null,
+					"termMap": true
+				},
+				"doc-slice": {
+					"sliceSize": 50,
+					"limit": 1
+				}
+			}
+		},
+		"galaxy-note-uninstall": {
+			"name": "Galaxy Note Uninstall",
+			"terms": [
+				"samsung",
+				"galaxy note 10.1"
+			],
+			"question": "How do I uninstall applications?",
+			"model": "auto",
+			"options": {
+				"auto": {
+					"sliceSize": 10,
+					"sliceByteCount": 4096,
+					"limit": 1,
+					"atLeast": null,
+					"termMap": false
+				},
+				"doc-slice": {
+					"sliceSize": 50,
+					"limit": 1
+				}
+			}
+		},
+		"vitamix-leaking": {
+			"name": "Vitamix Leaking",
+			"terms": [
+				"vitamix"
+			],
+			"question": "Why is it leaking from under the blender?",
+			"model": "auto",
+			"options": {
+				"auto": {
+					"sliceSize": 10,
+					"sliceByteCount": 4096,
+					"limit": 1,
+					"atLeast": null,
+					"termMap": false
+				},
+				"doc-slice": {
+					"sliceSize": 50,
+					"limit": 1
+				}
 			}
 		}
 	}
