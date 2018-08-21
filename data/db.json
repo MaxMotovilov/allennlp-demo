@@ -263,11 +263,11 @@
 			"terms": [
 				"vitamix"
 			],
-			"question": "Why is it leaking from under the blender?",
+			"question": "Why is it dripping from under the blender?",
 			"model": "auto",
 			"options": {
 				"auto": {
-					"sliceSize": 10,
+					"sliceSize": 5,
 					"sliceByteCount": 4096,
 					"limit": 1,
 					"atLeast": null,
