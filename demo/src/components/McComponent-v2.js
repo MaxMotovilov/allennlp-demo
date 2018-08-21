@@ -332,13 +332,13 @@ const McText = ({doc: {text, prediction, termMap, terms}, className}) => {
         <div key="text" className={"pane__text " + className}>
             {prediction.reduce(
                 (list, prediction) => {
-                    const {slice: {range: [begin, end], score}={}} = prediction, from = last;
-
-                    if( !score ) {
+                    if( !prediction.slice ) {
                         list.push.apply( list, emit(last, prediction) );
                     } else {
-                        if( begin > from )
-                            list.push.apply( text.slice( from, begin ).map( plain(from) ) );
+                        const {range: [begin, end]=[], score} = prediction.slice;
+
+                        if( begin > last )
+                            list.push.apply( text.slice( last, begin ).map( plain(last) ) );
                         list.push(
                             <div class="passage__slice">
                                 <div className="margin" /><div className="margin-tip">{score}</div>
