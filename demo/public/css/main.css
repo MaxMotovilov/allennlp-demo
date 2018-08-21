@@ -1253,24 +1253,50 @@ svg {
 	background-color: #fff8f0;
 }
 
-.pane__text p .margin {
+.pane__text .margin {
 	position: absolute;
 	box-sizing: border-box;
 	border-top: 1px solid white;
 	border-bottom: 1px solid white;
 	height: 100%;
 	width: 1ex;
-	margin-left: -1.5ex;
 }
 
-.pane__text p .margin-tip {
+.pane__text .margin-tip {
 	position: absolute;
 	display: none;
 	background-color: yellow;
 	z-index: 10;
+	padding: 2px 1ex;
 }
 
-.pane__text p .margin:hover+.margin-tip {
+.pane__text p>.margin {
+	margin-left: -1.5ex;
+}
+
+.pane__text .passage__slice p .margin-tip {
+	left: 0;
+}
+
+.pane__text p>.margin:hover+.margin-tip {
+	display: block;
+}
+
+.pane__text .passage__slice {
+	position: relative;
+}
+
+.pane__text .passage__slice>.margin {
+	background-color: cyan;
+	right: 0;
+	margin-right: -1.5em;
+}
+
+.pane__text .passage__slice .margin-tip {
+	right: 0;
+}
+
+.pane__text .passage__slice>.margin:hover+.margin-tip {
 	display: block;
 }
 

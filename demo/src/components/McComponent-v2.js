@@ -332,11 +332,25 @@ const McText = ({doc: {text, prediction, termMap, terms}, className}) => {
         <div key="text" className={"pane__text " + className}>
             {prediction.reduce(
                 (list, prediction) => {
-                    const {range: [[begin], [end]]} = prediction, from = last;
-                    last = end+1;
-                    if( begin > from )
-                        list.push.apply( list, text.slice( from, begin ).map( plain(from) ) );
-                    list.push.apply( list, highlight( text.slice(begin, end+1), prediction, begin, index++, termMap.length && margin ) );
+                    const {slice: {range: [begin, end], score}={}} = prediction, from = last;
+
+                    if( !score ) {
+                        list.push.apply( list, emit(last, prediction) );
+                    } else {
+                        if( begin > from )
+                            list.push.apply( text.slice( from, begin ).map( plain(from) ) );
+                        list.push(
+                            <div class="passage__slice">
+                                <div className="margin" /><div className="margin-tip">{score}</div>
+                                { emit(begin, prediction) }
+                                { end > last ?
+                                    text.slice( last, begin ).map( plain(last) )
+                                : null }
+                            </div>
+                        );
+                        last = end+1;
+                    }
+
                     return list;
                 }, []
             ).concat(
@@ -344,6 +358,13 @@ const McText = ({doc: {text, prediction, termMap, terms}, className}) => {
             )}
         </div>
     );
+
+    function emit(from, prediction) {
+        const {range: [[begin], [end]]} = prediction;
+        last = end+1;
+        return (begin > from ? text.slice( from, begin ).map( plain(from) ) : [])
+                    .concat( highlight( text.slice(begin, end+1), prediction, begin, index++, termMap.length && margin ) );
+    }
 }
 
 const
@@ -437,7 +458,7 @@ const
     defaultState = { terms: [], question: "", docs: [], more: null, expanded: null, tab: "search" },
     defaultOptions = { auto: { sliceSize: 50, sliceByteCount: 4096, limit: 1, atLeast: null, termMap: false }, "doc-slice": { sliceSize: 50, limit: 1 } };
 
-const startOf = ({range: [[from]]}) => from;
+const startOfP = ({range: [[from]]}) => from, startOfS = ({range: [from]}) => from;
 
 class _McComponent extends React.Component {
 
@@ -457,11 +478,17 @@ class _McComponent extends React.Component {
                     ).then(
                         response => {
                             console.log( response );
-                            let {prediction, termMap=[], terms=[]} = response;
+                            let {prediction, termMap=[], terms=[], slices=[]} = response;
                             if( !prediction )
                                 prediction = [response];
                             else
-                                prediction.sort( (a, b) => startOf(a)-startOf(b) );
+                                prediction.sort( (a, b) => startOfP(a)-startOfP(b) );
+
+                            if( slices.length )
+                                slices.sort( (a, b) => startOfS(a)-startOfS(b) ).forEach(
+                                    (slice, i) => prediction[i].slice = slice
+                                );
+
                             this.setState({
                                 docs: docs.map(
                                     (doc, i) => index === i ? {...doc, prediction, termMap, terms } : doc
