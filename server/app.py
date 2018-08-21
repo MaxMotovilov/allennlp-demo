@@ -250,6 +250,7 @@ def make_app(build_dir: str = None) -> Flask:
                     batch_size = req_data.get( "limit", 3 )
                     if model_name == "auto":
                         best, scores, term_map, terms = slicer.best( batch_size, drop_off, slice_size, slice_byte_count )
+                        slice_info = zip(scores, best)
                     else: # if model_name == "doc-slice":
                         best, scores = takeTopN( slice_scores, batch_size, lambda i: (i, i+slice_size) )
 
@@ -264,10 +265,11 @@ def make_app(build_dir: str = None) -> Flask:
                         best = (best, best+slice_size)
                     else: # if model_name == "auto"
                         best, scores, term_map, terms = slicer.best( 1, drop_off, slice_size, slice_byte_count )
+                        slice_info = zip(scores, best)
                         best = best[0]
                         scores = scores[0]
 
-                    logger.info("Best slice at %s: %s", best[0], scores)
+                    logger.info("Best slice at %s: %s", best, scores)
 
                 if model_name == "auto":
                     logger.info( "Slicer timings: %s", [ b-a for a,b in pairwise( slicer.timings ) ] )
@@ -341,7 +343,7 @@ def make_app(build_dir: str = None) -> Flask:
             result['terms'] = terms
             result['slices'] = [
                 { 'score': float(score), 'range': r }
-                    for score, r in zip(scores, best)
+                    for score, r in slice_info
             ]
 
         return jsonify(result)
