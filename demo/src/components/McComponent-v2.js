@@ -509,7 +509,8 @@ class _McComponent extends React.Component {
                                     docs: results,
                                     lastSearchUrl: url,
                                     searching: false,
-                                    tab: "search"
+                                    tab: "search",
+                                    expanded: null
                                 });
                                 return results
                             }
