@@ -338,13 +338,13 @@ const McText = ({doc: {text, prediction, termMap, terms}, className}) => {
                         const {range: [begin, end]=[], score} = prediction.slice;
 
                         if( begin > last )
-                            list.push.apply( text.slice( last, begin ).map( plain(last) ) );
+                            list.push.apply( list, text.slice( last, begin ).map( plain(last) ) );
                         list.push(
                             <div class="passage__slice">
                                 <div className="margin" /><div className="margin-tip">{score}</div>
                                 { emit(begin, prediction) }
                                 { end > last ?
-                                    text.slice( last, begin ).map( plain(last) )
+                                    text.slice( last, end ).map( plain(last) )
                                 : null }
                             </div>
                         );
