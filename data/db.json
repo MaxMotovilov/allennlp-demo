@@ -218,13 +218,14 @@
 		},
 		"new": {
 			"terms": [
-				"vitamix"
+				"samsung",
+				"galaxy note 10.1"
 			],
-			"question": "What is button 2 pre-set program?",
+			"question": "How do I set the pin?",
 			"model": "auto",
 			"options": {
 				"auto": {
-					"sliceSize": 50,
+					"sliceSize": 10,
 					"sliceByteCount": 4096,
 					"limit": 3,
 					"atLeast": null,
@@ -263,15 +264,15 @@
 			"terms": [
 				"vitamix"
 			],
-			"question": "Why is it dripping from under the blender?",
+			"question": "Why is it leaking from under the blender?",
 			"model": "auto",
 			"options": {
 				"auto": {
-					"sliceSize": 5,
+					"sliceSize": 10,
 					"sliceByteCount": 4096,
-					"limit": 1,
+					"limit": 2,
 					"atLeast": null,
-					"termMap": false
+					"termMap": true
 				},
 				"doc-slice": {
 					"sliceSize": 50,
