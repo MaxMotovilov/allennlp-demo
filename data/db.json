@@ -270,7 +270,51 @@
 				"auto": {
 					"sliceSize": 10,
 					"sliceByteCount": 4096,
-					"limit": 2,
+					"limit": 1,
+					"atLeast": null,
+					"termMap": true
+				},
+				"doc-slice": {
+					"sliceSize": 50,
+					"limit": 1
+				}
+			}
+		},
+		"blendtec-running-hot": {
+			"name": "Blendtec running Hot",
+			"terms": [
+				"blendtec",
+				"stealth"
+			],
+			"question": "Why is my blender running hot?",
+			"model": "auto",
+			"options": {
+				"auto": {
+					"sliceSize": 50,
+					"sliceByteCount": 4096,
+					"limit": 4,
+					"atLeast": null,
+					"termMap": true
+				},
+				"doc-slice": {
+					"sliceSize": 50,
+					"limit": 1
+				}
+			}
+		},
+		"blendtec-hot-3-": {
+			"name": "Blendtec hot (3)",
+			"terms": [
+				"blendtec",
+				"stealth"
+			],
+			"question": "Why is my blender hot?",
+			"model": "auto",
+			"options": {
+				"auto": {
+					"sliceSize": 10,
+					"sliceByteCount": 4096,
+					"limit": 4,
 					"atLeast": null,
 					"termMap": true
 				},
