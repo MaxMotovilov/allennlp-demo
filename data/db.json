@@ -292,7 +292,7 @@
 				"auto": {
 					"sliceSize": 50,
 					"sliceByteCount": 4096,
-					"limit": 4,
+					"limit": 1,
 					"atLeast": null,
 					"termMap": true
 				},
