@@ -22,7 +22,7 @@ def _withoutStopWords( tokens ):
     return [t for t in tokens if not t.lemma_.lower() in nlp.Defaults.stop_words and not t.is_punct]
 
 class SliceBySimilarityToQuery(object):
-    def __init__(self, paragraphs, query, amplify='positive-2-stdev', proximity=10.0):
+    def __init__(self, paragraphs, query, amplify='positive-2-stdev', proximity=6.0):
         self.timings = [perf_counter()]
         amplify = re.fullmatch( r'(positive|both)-(\d+)-stdev', amplify )
         assert( amplify is not None )
@@ -101,7 +101,8 @@ class SliceBySimilarityToQuery(object):
         ], order='C' ) )
 
         # Generalized IDF weighting
-        self.paragraphs *= np.log( float(self.paragraphs.shape[0]) / (1 + np.sum( self.paragraphs, 0 )) )
+        self.idf = np.log( float(self.paragraphs.shape[0]) / (1 + np.sum( self.paragraphs, 0 )) )
+        self.paragraphs *= self.idf
 
         self.timings.append( perf_counter() )
 
@@ -116,11 +117,30 @@ class SliceBySimilarityToQuery(object):
 
 #        score = lambda r: self.paragraphs[r[0]:r[1]].max(0).sum()
 
-        def score(r):
+        def _scores(r):
             f, t = r
             vectors = self.paragraphs[f:t]
             attenuation = self.attenuation[f:t,f:t]
-            return np.amax( np.einsum( 'ij,jk->ij', attenuation, vectors ), axis=(1) ).sum()
+            return np.dot( np.amax( np.einsum( 'ij,jk->ikj', attenuation, vectors ), axis=2 ), self.idf )
+
+        def score(r):
+            scores = _scores(r).tolist()
+            scores.insert( 0, 0.0 )
+            scores.append( 0.0 )
+            # Using np.percentile() is prohibitively expensive, so use a simple approximation instead
+            scores = sorted(
+                (scores[i] for i in range( 1, len(scores)-1 )
+                    if scores[i-1]<=scores[i] and scores[i]>scores[i+1]),
+                reverse=True
+            )
+            if len(scores)==0:
+                return 0
+            if len(scores)==1:
+                return 0.9*scores[0]
+            elif len(scores)>10:
+                return scores[1]
+            else:
+                return scores[0] - 0.1*(scores[0]-scores[1])*(len(scores)-1)
 
         def enumWindows():
             bc = -1
