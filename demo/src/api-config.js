@@ -1,3 +1,4 @@
+/* global FormData */
 // Everything will be proxied -- no CORS or URL magic required
 
 export const API_ROOT = window && window.location && window.location.origin || "";
@@ -41,4 +42,20 @@ export function put( url, data ) {
                 },
                 body: JSON.stringify( data )
             }) );
+}
+
+export function upload( url, files ) {
+    return process( fetch( API_ROOT + url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                body: packFiles(files)
+            }) );
+}
+
+function packFiles( files ) {
+    const form = new FormData();
+    files.forEach( (file, i) => form.append( `file-${i}`, file ) );
+    return form;
 }

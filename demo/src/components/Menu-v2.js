@@ -2,8 +2,9 @@
 
 import React, {Fragment} from 'react';
 import { Link, Switch, Route, Redirect } from 'react-router-dom';
+import Dropzone from 'react-dropzone';
 
-import { get, post } from '../api-config';
+import { get, post, upload } from '../api-config';
 
 /*******************************************************************************
   <Header /> Component
@@ -83,6 +84,35 @@ class SaveAsButton extends React.Component {
     }
 }
 
+class Upload extends React.Component {
+
+    onDrop = files => {
+        upload("/upload", files)
+            .then(
+                r => { console.log( r ); this.setState({ navigate: "new" }); },
+                err => { console.error( err ); this.setState({ navigate: "new" }); }
+            );
+    }
+
+    render() {
+        let dropzone;
+
+        return (
+            <Dropzone
+                className="nav__dropzone"
+                ref={elt => { dropzone = elt }}
+                accept="application/pdf"
+                disableClick
+                disablePreview
+                onDrop={this.onDrop}
+            >
+                Drag and drop PDF files here<br/>
+                <a href="javascript:" onClick={() => dropzone && dropzone.open()}>Click to browse</a>
+            </Dropzone>
+        );
+    }
+}
+
 class Menu extends React.Component {
 
     state = {pages: []};
@@ -134,6 +164,20 @@ class Menu extends React.Component {
                                     <Link to={{pathname: `${prefix}/save`, state: {}}}>
                                         <span>
                                             <AddButton /> Save As...
+                                        </span>
+                                    </Link>
+                                }/>
+                            </Switch>
+                        </span>
+                    </li>
+                    <li key="upload">
+                        <span className={`nav__link ${page === "upload" ? "nav__link--selected" : ""}`}>
+                            <Switch>
+                                <Route path={`${prefix}/upload`} component={Upload} />
+                                <Route children={
+                                    <Link to={{pathname: `${prefix}/upload`, state: {}}}>
+                                        <span>
+                                            <AddButton /> Upload...
                                         </span>
                                     </Link>
                                 }/>

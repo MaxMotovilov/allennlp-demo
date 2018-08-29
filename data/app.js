@@ -11,7 +11,17 @@ const
 
     port = arg( "--port", 3020 ),
     docpath = resolve( __dirname, arg( "--docs", "../../Alorica/etl" ) ),
-    pdfpath = resolve( __dirname, arg( "--pdfs", "../../Alorica/data" ) );
+    pdfpath = resolve( __dirname, arg( "--pdfs", "../../Alorica/data" ) ),
+
+    hashSeed = 0xDEADBEEF,
+    {hash} = require('xxhash'),
+
+    multer = require('multer'),
+    {diskStorage} = multer,
+    upload = multer({ storage: diskStorage({
+        destination: resolve( pdfpath, "./uploads" ),
+        filename: (_, {originalname}, cb) => cb(null,  hash(new Buffer(originalname.replace( /\.pdf$/i, "" ).toLowerCase()), hashSeed, "hex").substr( 0, 6 ) + ".pdf")
+    }) });
 
 let pdf_subdirs = [ "." ];
 
@@ -29,7 +39,10 @@ app
     .use( "/pdf", express.static( pdfpath, {maxAge: "1d"} ) );
 
 app
-    .use( express.json() )
+    .post( "/upload", upload.any(), api( uploadPdfFiles ) );
+
+app
+    .use( "/data", express.json() )
     .route( "/data/v1" )
         .get( api( listDocuments ) )
         .post( api( addDocuments ) );
@@ -244,4 +257,7 @@ function pdfResolver( req, res, next ) {
             );
 }
 
+function uploadPdfFiles( {files} ) {
+    return files.map( ({path}) => path );
+}
 

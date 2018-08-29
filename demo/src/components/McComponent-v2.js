@@ -566,13 +566,13 @@ class _McComponent extends React.Component {
 
     componentWillMount() {
         const {match: {params: {page}}} = this.props;
-        if( page && !(page in {save: 1, new: 1}) )
+        if( page && !(page in {save: 1, new: 1, upload: 1}) )
             this.load( page );
     }
 
     componentWillReceiveProps({match: {params: {page}}}) {
         const {match: {params: {page: currentPage}}} = this.props;
-        if( page && page !== currentPage && !(page in {save: 1, new: 1}) )
+        if( page && page !== currentPage && !(page in {save: 1, new: 1, upload: 1}) )
             this.load( page );
         else if( page == "new" && page !== currentPage )
             this.setState( defaultState );
@@ -596,7 +596,7 @@ class _McComponent extends React.Component {
 
         const save = () => this.save( page, {terms, question, model, options} )
 
-        if( searched && !(page in {save: 1, new: 1}) )
+        if( searched && !(page in {save: 1, new: 1, upload: 1}) )
             searched.then( save );
         else if( update )
             save().then( () => this.setState(
