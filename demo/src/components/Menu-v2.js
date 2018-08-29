@@ -1,6 +1,7 @@
 /* global window */
 
 import React, {Fragment} from 'react';
+import {createPortal} from 'react-dom';
 import { Link, Switch, Route, Redirect } from 'react-router-dom';
 import Dropzone from 'react-dropzone';
 
@@ -84,18 +85,72 @@ class SaveAsButton extends React.Component {
     }
 }
 
+class UploadResults extends React.PureComponent {
+    componentWillMount() {
+        this.portal = document.getElementById( "upload_portal" );
+        this.portal.style.display = "block";
+    }
+
+    componentWillUnmount() {
+        this.portal.style.display = "none";
+    }
+
+    render() {
+        const {reader, close} = this.props;
+        const decoder = new TextDecoder( "utf-8" );
+
+        return createPortal( (
+            <div>
+                <pre ref={div => div && next(div)} />
+                <button onClick={close}>Close</button>
+            </div>
+        ), this.portal );
+
+        function next( div ) {
+            reader.read().then(
+                ({value, done}) => {
+                    if( done ) {
+                        write( div, "\n\nFinished..." );
+                    } else {
+                        write( div, decoder.decode( value ) );
+                        next( div );
+                    }
+                }
+            );
+        }
+
+        function write( div, text ) {
+            div.innerHTML = div.innerHTML + text;
+            div.scrollTop = div.scrollHeight;
+        }
+    }
+}
+
 class Upload extends React.Component {
+
+    state = {}
 
     onDrop = files => {
         upload("/upload", files)
             .then(
-                r => { console.log( r ); this.setState({ navigate: "new" }); },
+                uploading => this.setState({ uploading }),
                 err => { console.error( err ); this.setState({ navigate: "new" }); }
             );
     }
 
     render() {
         let dropzone;
+        const {uploading, navigate} = this.state;
+
+        if( navigate )
+            return (
+                <Redirect to={`/v2/${navigate}`} />
+            );
+
+        if( uploading )
+            return (
+                <UploadResults reader={uploading} close={() => this.setState({ navigate: "new" })} />
+            );
 
         return (
             <Dropzone

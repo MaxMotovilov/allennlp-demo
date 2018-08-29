@@ -9,7 +9,6 @@ import MenuV2 from './components/Menu-v2';
   <App /> Container
 *******************************************************************************/
 
-
 const App = () => (
   <Router>
     <div>
@@ -23,6 +22,7 @@ const App = () => (
             <Route path="/v1/:doc?" component={McComponentV1} />
             <Route path="/v2/:page?" component={MenuV2} />
             <Route path="/v2/:page?" component={McComponentV2} />
+            <div id="upload_portal" style={{display: "none"}} />
         </div>
     </div>
   </Router>

@@ -12,6 +12,7 @@ const
     port = arg( "--port", 3020 ),
     docpath = resolve( __dirname, arg( "--docs", "../../Alorica/etl" ) ),
     pdfpath = resolve( __dirname, arg( "--pdfs", "../../Alorica/data" ) ),
+    uploadScript = resolve( __dirname, arg( "--upload", resolve( pdfpath, "./upload.sh" ) ) ),
 
     hashSeed = 0xDEADBEEF,
     {hash} = require('xxhash'),
@@ -39,7 +40,7 @@ app
     .use( "/pdf", express.static( pdfpath, {maxAge: "1d"} ) );
 
 app
-    .post( "/upload", upload.any(), api( uploadPdfFiles ) );
+    .post( "/upload", upload.any(), require('./upload')(uploadScript) );
 
 app
     .use( "/data", express.json() )
@@ -255,9 +256,5 @@ function pdfResolver( req, res, next ) {
                     res.end( err.stack );
                 }
             );
-}
-
-function uploadPdfFiles( {files} ) {
-    return files.map( ({path}) => path );
 }
 

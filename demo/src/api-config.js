@@ -45,13 +45,17 @@ export function put( url, data ) {
 }
 
 export function upload( url, files ) {
-    return process( fetch( API_ROOT + url, {
+    return fetch( API_ROOT + url, {
                 method: 'POST',
                 headers: {
-                    'Accept': 'application/json'
+                    'Accept': 'text/plain'
                 },
                 body: packFiles(files)
-            }) );
+            }).then(
+                response => response.ok
+                    ? response.body.getReader()
+                    : response.text().then( text => { throw Error( text ) } )
+            );
 }
 
 function packFiles( files ) {
