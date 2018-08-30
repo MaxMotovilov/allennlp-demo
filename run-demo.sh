@@ -2,7 +2,7 @@
 
 case $1 in
 	start)
-		[[ -s run-demo.pis ]] && kill -0 $(<run-demo.pid) && {
+		[[ -s run-demo.pid ]] && kill -0 $(<run-demo.pid) && {
 			ps -ef | grep $(<run-demo.pid)
 			echo To stop: ./run-demo.sh stop
 			exit 1
